@@ -18,4 +18,6 @@ public interface AttendanceService {
     List<AttendanceResponseDto> getCourseAttendanceForDate(Long courseId, LocalDate date);
     
     boolean isUserPresentForCourseToday(Long userId, Long courseId);
+    
+    String enrollUserInCourse(User user, Long courseId);
 }

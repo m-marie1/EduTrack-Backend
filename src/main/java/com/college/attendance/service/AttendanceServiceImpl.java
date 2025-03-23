@@ -140,6 +140,29 @@ public class AttendanceServiceImpl implements AttendanceService {
             .isPresent();
     }
     
+    @Override
+    public String enrollUserInCourse(User user, Long courseId) {
+        // Find the course
+        Course course = courseRepository.findById(courseId)
+            .orElseThrow(() -> new ResourceNotFoundException("Course not found with ID: " + courseId));
+        
+        // Check if user already has courses
+        if (user.getCourses() == null) {
+            user.setCourses(new java.util.HashSet<>());
+        }
+        
+        // Check if already enrolled
+        if (user.getCourses().stream().anyMatch(c -> c.getId().equals(courseId))) {
+            return "Already enrolled in " + course.getCourseCode();
+        }
+        
+        // Add course to user and save
+        user.getCourses().add(course);
+        userRepository.save(user);
+        
+        return "Successfully enrolled in " + course.getCourseCode();
+    }
+    
     private boolean isCourseInSession(Course course, LocalDateTime now) {
         return course.getDays().contains(now.getDayOfWeek()) &&
                !now.toLocalTime().isBefore(course.getStartTime()) &&

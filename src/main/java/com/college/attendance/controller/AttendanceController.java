@@ -61,28 +61,26 @@ public ResponseEntity<ApiResponse<AttendanceResponseDto>> recordAttendance(
 
 
     @PostMapping("/enroll/{courseId}")
-public ResponseEntity<ApiResponse<String>> enrollInCourse(@PathVariable Long courseId) {
-    // Get the authenticated user
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    String username = authentication.getName();
-    User user = userRepository.findByUsername(username)
-        .orElseThrow(() -> new IllegalArgumentException("User not found"));
-    
-    Course course = courseRepository.findById(courseId)
-        .orElseThrow(() -> new ResourceNotFoundException("Course not found"));
-    
-    if (user.getCourses() == null) {
-        user.setCourses(new HashSet<>());
+    public ResponseEntity<ApiResponse<String>> enrollInCourse(@PathVariable Long courseId) {
+        try {
+            // Get the authenticated user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+            User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            
+            // Delegate to service layer
+            String result = attendanceService.enrollUserInCourse(user, courseId);
+            
+            return ResponseEntity.ok(ApiResponse.success(result));
+        } catch (Exception e) {
+            // Log the exception for debugging
+            e.printStackTrace();
+            return ResponseEntity.status(500).body(
+                ApiResponse.error("Enrollment failed: " + e.getMessage())
+            );
+        }
     }
-    
-    user.getCourses().add(course);
-    userRepository.save(user);
-    
-    return ResponseEntity.ok(ApiResponse.success(
-        "Successfully enrolled in " + course.getCourseName(), 
-        "You are now enrolled in " + course.getCourseCode())
-    );
-}
     
     @GetMapping("/user/{userId}/course/{courseId}")
     public ResponseEntity<ApiResponse<List<AttendanceResponseDto>>> getUserAttendanceForCourse(

@@ -32,10 +32,10 @@ public class DataLoader {
             javaCourse.setCourseName("Introduction to Java");
             javaCourse.setDescription("Fundamentals of Java programming");
             javaCourse.setStartTime(LocalTime.of(9, 0));
-            javaCourse.setEndTime(LocalTime.of(11, 0));
+            javaCourse.setEndTime(LocalTime.of(17, 0));
 
             Set<DayOfWeek> javaDays = new HashSet<>();
-            javaDays.add(DayOfWeek.MONDAY);
+            javaDays.add(DayOfWeek.SUNDAY);
             javaDays.add(DayOfWeek.WEDNESDAY);
             javaCourse.setDays(javaDays);
 

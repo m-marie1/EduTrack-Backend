@@ -1,9 +1,14 @@
 package com.college.attendance.model;
 
+import com.fasterxml.jackson.annotation.JsonBackReference;
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
+import lombok.ToString;
 
 import java.time.DayOfWeek;
 import java.time.LocalTime;
@@ -14,6 +19,11 @@ import java.util.Set;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIdentityInfo(
+    generator = ObjectIdGenerators.PropertyGenerator.class,
+    property = "id")
+@EqualsAndHashCode(exclude = {"students"})
+@ToString(exclude = {"students"})
 public class Course {
     
     @Id
@@ -40,6 +50,7 @@ public class Course {
     @Enumerated(EnumType.STRING)
     private Set<DayOfWeek> days;
     
+    @JsonBackReference
     @ManyToMany(mappedBy = "courses")
     private Set<User> students;
 }
