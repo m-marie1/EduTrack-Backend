@@ -40,7 +40,20 @@ public class User {
     @Column(nullable = false, unique = true)
     private String email;
     
+    // Optional field for legacy compatibility
     private String studentId;
+    
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false)
+    private Role role = Role.STUDENT; // Default role
+    
+    private boolean emailVerified = false;
+    
+    private String verificationCode;
+    
+    @OneToOne
+    @JoinColumn(name = "professor_request_id")
+    private ProfessorRequest professorRequest;
     
     @JsonManagedReference
     @ManyToMany(fetch = FetchType.LAZY)

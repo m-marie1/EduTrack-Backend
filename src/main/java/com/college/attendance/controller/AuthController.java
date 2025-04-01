@@ -3,10 +3,12 @@ package com.college.attendance.controller;
 import com.college.attendance.dto.JwtResponse;
 import com.college.attendance.dto.LoginRequest;
 import com.college.attendance.dto.RegisterRequest;
+import com.college.attendance.dto.VerifyEmailDto;
 import com.college.attendance.model.User;
 import com.college.attendance.repository.UserRepository;
 import com.college.attendance.security.CustomUserDetailsService;
 import com.college.attendance.security.JwtTokenUtil;
+import com.college.attendance.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -21,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
 import java.util.HashSet;
+import java.util.Random;
 
 @RestController
 @RequestMapping("/api/auth")
@@ -32,6 +35,7 @@ public class AuthController {
     private final JwtTokenUtil jwtTokenUtil;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final EmailService emailService;
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<JwtResponse>> login(@Valid @RequestBody LoginRequest loginRequest) {
@@ -46,9 +50,16 @@ public class AuthController {
             final UserDetails userDetails = userDetailsService
                 .loadUserByUsername(loginRequest.getUsername());
             
-            final String token = jwtTokenUtil.generateToken(userDetails);
+            User user = userRepository.findByUsername(loginRequest.getUsername())
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
             
-            User user = userRepository.findByUsername(loginRequest.getUsername()).get();
+            // Check if email is verified
+            if (!user.isEmailVerified()) {
+                return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Email not verified. Please verify your email first."));
+            }
+            
+            final String token = jwtTokenUtil.generateToken(userDetails);
             
             return ResponseEntity.ok(ApiResponse.success(
                 "Login successful",
@@ -62,7 +73,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<JwtResponse>> register(@Valid @RequestBody RegisterRequest registerRequest) {
+    public ResponseEntity<ApiResponse<String>> register(@Valid @RequestBody RegisterRequest registerRequest) {
         if (userRepository.findByUsername(registerRequest.getUsername()).isPresent()) {
             return ResponseEntity
                 .badRequest()
@@ -75,24 +86,65 @@ public class AuthController {
                 .body(ApiResponse.error("Email is already in use"));
         }
         
+        // Generate a verification code
+        String verificationCode = generateVerificationCode();
+        
         User user = new User();
         user.setUsername(registerRequest.getUsername());
         user.setPassword(passwordEncoder.encode(registerRequest.getPassword()));
         user.setFullName(registerRequest.getFullName());
         user.setEmail(registerRequest.getEmail());
-        user.setStudentId(registerRequest.getStudentId());
+        // Student ID is now optional and not included in registration
         user.setCourses(new HashSet<>());
+        user.setEmailVerified(false);
+        user.setVerificationCode(verificationCode);
         
         userRepository.save(user);
         
+        // Send verification email
+        emailService.sendVerificationEmail(user.getEmail(), verificationCode);
+        
+        return ResponseEntity.ok(ApiResponse.success(
+            "User registered successfully. Please check your email for verification code.",
+            "A verification code has been sent to " + user.getEmail()
+        ));
+    }
+    
+    @PostMapping("/verify-email")
+    public ResponseEntity<ApiResponse<JwtResponse>> verifyEmail(@Valid @RequestBody VerifyEmailDto verifyEmailDto) {
+        User user = userRepository.findByEmail(verifyEmailDto.getEmail())
+            .orElseThrow(() -> new IllegalArgumentException("Email not found"));
+        
+        if (user.isEmailVerified()) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Email is already verified"));
+        }
+        
+        if (!user.getVerificationCode().equals(verifyEmailDto.getCode())) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Invalid verification code"));
+        }
+        
+        // Verify email
+        user.setEmailVerified(true);
+        user.setVerificationCode(null); // Clear the code
+        userRepository.save(user);
+        
+        // Generate JWT token
         final UserDetails userDetails = userDetailsService
-            .loadUserByUsername(registerRequest.getUsername());
+            .loadUserByUsername(user.getUsername());
         
         final String token = jwtTokenUtil.generateToken(userDetails);
         
         return ResponseEntity.ok(ApiResponse.success(
-            "User registered successfully",
+            "Email verified successfully",
             new JwtResponse(token, user.getUsername(), user.getFullName(), user.getEmail())
         ));
+    }
+    
+    private String generateVerificationCode() {
+        Random random = new Random();
+        int code = 100000 + random.nextInt(900000); // 6-digit code
+        return String.valueOf(code);
     }
 }

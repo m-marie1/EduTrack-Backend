@@ -1,0 +1,52 @@
+package com.college.attendance.model;
+
+import jakarta.persistence.*;
+import lombok.AllArgsConstructor;
+import lombok.Data;
+import lombok.NoArgsConstructor;
+
+import java.time.LocalDateTime;
+import java.util.List;
+
+@Entity
+@Table(name = "assignment_submissions")
+@Data
+@NoArgsConstructor
+@AllArgsConstructor
+public class AssignmentSubmission {
+    
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "assignment_id", nullable = false)
+    private Assignment assignment;
+    
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "student_id", nullable = false)
+    private User student;
+    
+    @Column(columnDefinition = "TEXT")
+    private String notes;
+    
+    @Column(nullable = false)
+    private LocalDateTime submissionDate = LocalDateTime.now();
+    
+    private LocalDateTime gradedDate;
+    
+    private Integer score;
+    
+    @Column(columnDefinition = "TEXT")
+    private String feedback;
+    
+    @ElementCollection
+    @CollectionTable(name = "submission_files", joinColumns = @JoinColumn(name = "submission_id"))
+    private List<FileInfo> files;
+    
+    @Column(nullable = false)
+    private boolean graded = false;
+    
+    @Column(nullable = false)
+    private boolean late = false;
+} 

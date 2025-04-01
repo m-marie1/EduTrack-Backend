@@ -45,20 +45,27 @@ public class AttendanceController {
     // }
 
     @PostMapping("/record")
-public ResponseEntity<ApiResponse<AttendanceResponseDto>> recordAttendance(
-        @Valid @RequestBody AttendanceRecordDto attendanceDto) {
-    
-    // Get the authenticated user
-    Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-    String username = authentication.getName();
-    User user = userRepository.findByUsername(username)
-        .orElseThrow(() -> new IllegalArgumentException("User not found"));
-    
-    AttendanceResponseDto response = attendanceService.recordAttendance(user, attendanceDto);
-    
-    return ResponseEntity.ok(ApiResponse.success("Attendance recorded successfully", response));
-}
-
+    public ResponseEntity<ApiResponse<AttendanceResponseDto>> recordAttendance(
+            @Valid @RequestBody AttendanceRecordDto attendanceDto) {
+        try {
+            // Get the authenticated user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+            User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+            
+            AttendanceResponseDto response = attendanceService.recordAttendance(user, attendanceDto);
+            
+            return ResponseEntity.ok(ApiResponse.success("Attendance recorded successfully", response));
+        } catch (IllegalStateException e) {
+            // This is for business logic exceptions (not enrolled, not in session, etc.)
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Error recording attendance: " + e.getMessage()));
+        }
+    }
 
     @PostMapping("/enroll/{courseId}")
     public ResponseEntity<ApiResponse<String>> enrollInCourse(@PathVariable Long courseId) {

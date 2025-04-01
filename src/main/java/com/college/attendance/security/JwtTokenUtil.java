@@ -12,12 +12,13 @@ import java.security.Key;
 import java.util.Date;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Function;
 
 @Component
 public class JwtTokenUtil {
 
-    @Value("${jwt.secret:defaultSecretKeyWhichShouldBeVeryVeryLongForSecurity}")
+    @Value("${jwt.secret:defaultSecretKeyWhichShouldBeVeryVeryLongForSecurityPleaseChangeThis}")
     private String secret;
 
     @Value("${jwt.expiration:86400000}") // 24 hours in milliseconds
@@ -31,6 +32,8 @@ public class JwtTokenUtil {
 
     public String generateToken(UserDetails userDetails) {
         Map<String, Object> claims = new HashMap<>();
+        // Add a unique token ID to prevent reuse
+        claims.put("tokenId", UUID.randomUUID().toString());
         return createToken(claims, userDetails.getUsername());
     }
 
@@ -53,6 +56,10 @@ public class JwtTokenUtil {
 
     public Date extractExpiration(String token) {
         return extractClaim(token, Claims::getExpiration);
+    }
+    
+    public String extractTokenId(String token) {
+        return extractClaim(token, claims -> claims.get("tokenId", String.class));
     }
 
     public <T> T extractClaim(String token, Function<Claims, T> claimsResolver) {

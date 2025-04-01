@@ -36,13 +36,13 @@ public class AttendanceServiceImpl implements AttendanceService {
         
         // Verify the user is enrolled in this course
         if (user.getCourses() == null || !user.getCourses().contains(course)) {
-            throw new IllegalArgumentException("User is not enrolled in this course");
+            throw new IllegalStateException("User is not enrolled in this course");
         }
         
         // Check if the current time is within the course schedule for today
         LocalDateTime now = LocalDateTime.now();
         if (!isCourseInSession(course, now)) {
-            throw new IllegalArgumentException("Course is not in session right now");
+            throw new IllegalStateException("Course is not in session right now");
         }
         
         // Check if the student already has attendance for this course today
@@ -53,7 +53,7 @@ public class AttendanceServiceImpl implements AttendanceService {
             .findByUserAndCourseAndTimestampBetween(user, course, startOfDay, endOfDay);
         
         if (existingRecord.isPresent()) {
-            throw new IllegalArgumentException("Attendance already recorded for this course today");
+            throw new IllegalStateException("Attendance already recorded for this course today");
         }
         
         // Verify network connection (wifi or ESP32)
@@ -173,7 +173,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         AttendanceResponseDto dto = new AttendanceResponseDto();
         dto.setId(record.getId());
         dto.setStudentName(record.getUser().getFullName());
-        dto.setStudentId(record.getUser().getStudentId());
+        dto.setStudentId(record.getUser().getStudentId() != null ? record.getUser().getStudentId() : "N/A");
         dto.setCourseCode(record.getCourse().getCourseCode());
         dto.setCourseName(record.getCourse().getCourseName());
         dto.setTimestamp(record.getTimestamp());
