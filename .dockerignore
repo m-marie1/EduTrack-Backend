@@ -1,0 +1,14 @@
+.git
+.gitignore
+.idea
+.vscode
+target/
+*.log
+.mvn/
+mvnw
+mvnw.cmd
+Dockerfile
+.dockerignore
+README.md
+API_DOCUMENTATION.md
+HELP.md 
