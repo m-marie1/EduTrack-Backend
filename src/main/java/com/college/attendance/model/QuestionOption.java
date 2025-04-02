@@ -26,6 +26,6 @@ public class QuestionOption {
     @Column(nullable = false)
     private boolean correct;
     
-    @Column(name = "option_order")
+    @Column(name = "\"order\"")
     private Integer order;
 } 
