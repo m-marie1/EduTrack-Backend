@@ -33,7 +33,7 @@ public class Question {
     
     private Integer points = 1;
     
-    @Column(name = "question_order")
+    @Column(name = "\"order\"")
     private Integer order;
     
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
