@@ -47,30 +47,15 @@ public class DatabaseCleanupConfig {
 
         logger.warn("INITIATING DATABASE CLEANUP - ALL DATA WILL BE LOST!");
         try {
-            // Check if flyway_schema_history exists
-            boolean tableExists = false;
-            try {
-                Integer count = jdbcTemplate.queryForObject(
-                    "SELECT COUNT(*) FROM information_schema.tables WHERE table_name = 'flyway_schema_history'", 
-                    Integer.class
-                );
-                tableExists = (count != null && count > 0);
-            } catch (Exception e) {
-                logger.info("Flyway history table doesn't exist yet. This appears to be a fresh install.");
-            }
-
-            if (tableExists) {
-                logger.info("Cleaning database schema with Flyway...");
-                Flyway flyway = Flyway.configure()
-                    .dataSource(dataSource)
-                    .cleanDisabled(false)
-                    .load();
-                
-                flyway.clean();
-                logger.info("Database schema cleaned successfully.");
-            } else {
-                logger.info("No Flyway history found. No cleanup needed.");
-            }
+            // Force clean regardless of table existence
+            logger.info("Cleaning database schema with Flyway...");
+            Flyway flyway = Flyway.configure()
+                .dataSource(dataSource)
+                .cleanDisabled(false)
+                .load();
+            
+            flyway.clean();
+            logger.info("Database schema cleaned successfully.");
         } catch (Exception e) {
             logger.error("Error during database cleanup", e);
             // Continue with application startup even if cleanup fails
