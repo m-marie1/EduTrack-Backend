@@ -8,7 +8,6 @@ import org.springframework.boot.web.servlet.server.ConfigurableServletWebServerF
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
-import org.springframework.core.env.Environment;
 
 /**
  * Configuration to ensure Render.com can properly detect the port
@@ -21,18 +20,16 @@ public class RenderPortConfig {
     
     private static final Logger logger = LoggerFactory.getLogger(RenderPortConfig.class);
     
-    @Value("${PORT:8080}")
-    private int port;
-    
     /**
-     * Customize the web server to use the PORT environment variable
-     * and log the port being used to help with Render.com detection.
+     * Customize the web server to use port 8080 explicitly for Render.com detection
      */
     @Bean
     public WebServerFactoryCustomizer<ConfigurableServletWebServerFactory> webServerFactoryCustomizer() {
         return factory -> {
-            logger.info("Configuring web server to use port: {}", port);
-            factory.setPort(port);
+            // Always use port 8080 for Render.com regardless of the PORT env var
+            // This ensures Render.com can detect the application properly
+            logger.info("Configuring web server to use Render-compatible port: 8080");
+            factory.setPort(8080);
         };
     }
 } 
