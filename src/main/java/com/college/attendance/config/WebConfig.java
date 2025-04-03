@@ -15,7 +15,7 @@ public class WebConfig implements WebMvcConfigurer {
     @Value("${file.upload-dir}")
     private String uploadDir;
     
-    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:8081}")
+    @Value("${cors.allowed-origins:http://localhost:3000,http://localhost:8081,capacitor://localhost,null}")
     private String[] allowedOrigins;
     
     @Value("${cors.allowed-methods:GET,POST,PUT,DELETE,OPTIONS}")
@@ -33,9 +33,10 @@ public class WebConfig implements WebMvcConfigurer {
     
     @Override
     public void addCorsMappings(CorsRegistry registry) {
-        registry.addMapping("/api/**")
+        registry.addMapping("/**")
                 .allowedOrigins(allowedOrigins)
                 .allowedMethods(allowedMethods)
+                .allowedHeaders("*")
                 .allowCredentials(true)
                 .maxAge(maxAge);
     }
