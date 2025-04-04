@@ -10,6 +10,8 @@ import com.college.attendance.security.CustomUserDetailsService;
 import com.college.attendance.security.JwtTokenUtil;
 import com.college.attendance.service.EmailService;
 import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -36,6 +38,7 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<JwtResponse>> login(@Valid @RequestBody LoginRequest loginRequest) {
@@ -101,12 +104,25 @@ public class AuthController {
         
         userRepository.save(user);
         
-        // Send verification email
-        emailService.sendVerificationEmail(user.getEmail(), verificationCode);
+        // IMPORTANT: Log the verification code for troubleshooting in production
+        // This should be removed in a real production environment once email sending is confirmed working
+        logger.info("DEBUG_VERIFICATION_CODE: User {} with email {} has verification code: {}", 
+            user.getUsername(), user.getEmail(), verificationCode);
+        
+        try {
+            // Send verification email
+            emailService.sendVerificationEmail(user.getEmail(), verificationCode);
+            logger.info("Verification email successfully triggered for user: {}", user.getUsername());
+        } catch (Exception e) {
+            logger.error("Failed to send verification email to user: {}. Error: {}", 
+                user.getUsername(), e.getMessage(), e);
+            // We still return success since the user was created, but log the email failure
+        }
         
         return ResponseEntity.ok(ApiResponse.success(
             "User registered successfully. Please check your email for verification code.",
-            "A verification code has been sent to " + user.getEmail()
+            "A verification code has been sent to " + user.getEmail() + 
+            ". If you don't receive it, check logs or contact support."
         ));
     }
     

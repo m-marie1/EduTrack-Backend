@@ -1,5 +1,7 @@
 package com.college.attendance.service;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
@@ -10,6 +12,8 @@ import org.springframework.stereotype.Service;
 @Service
 @Profile("!dev") // Use in production, not in dev environment
 public class EmailServiceImpl implements EmailService {
+    
+    private static final Logger log = LoggerFactory.getLogger(EmailServiceImpl.class);
     
     @Value("${spring.mail.username}")
     private String fromEmail;
@@ -26,7 +30,14 @@ public class EmailServiceImpl implements EmailService {
         message.setText("Your verification code is: " + verificationCode + 
                        "\n\nPlease use this code to verify your email address.");
         
-        mailSender.send(message);
+        try {
+            log.info("Attempting to send verification email to: {}", to);
+            mailSender.send(message);
+            log.info("Verification email sent successfully to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send verification email to: {}. Error: {}", to, e.getMessage(), e);
+            throw new RuntimeException("Failed to send verification email", e);
+        }
     }
     
     @Override
@@ -38,7 +49,14 @@ public class EmailServiceImpl implements EmailService {
         message.setText("Your password reset token is: " + resetToken + 
                        "\n\nPlease use this token to reset your password.");
         
-        mailSender.send(message);
+        try {
+            log.info("Attempting to send password reset email to: {}", to);
+            mailSender.send(message);
+            log.info("Password reset email sent successfully to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send password reset email to: {}. Error: {}", to, e.getMessage(), e);
+            throw new RuntimeException("Failed to send password reset email", e);
+        }
     }
     
     @Override
@@ -52,7 +70,14 @@ public class EmailServiceImpl implements EmailService {
                        password + 
                        "\n\nPlease change your password after your first login.");
         
-        mailSender.send(message);
+        try {
+            log.info("Attempting to send professor approval email to: {}", to);
+            mailSender.send(message);
+            log.info("Professor approval email sent successfully to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send professor approval email to: {}. Error: {}", to, e.getMessage(), e);
+            throw new RuntimeException("Failed to send professor approval email", e);
+        }
     }
     
     @Override
@@ -65,6 +90,13 @@ public class EmailServiceImpl implements EmailService {
                        "\n\nReason: " + reason +
                        "\n\nFeel free to submit a new request or contact support for more information.");
         
-        mailSender.send(message);
+        try {
+            log.info("Attempting to send professor rejection email to: {}", to);
+            mailSender.send(message);
+            log.info("Professor rejection email sent successfully to: {}", to);
+        } catch (Exception e) {
+            log.error("Failed to send professor rejection email to: {}. Error: {}", to, e.getMessage(), e);
+            throw new RuntimeException("Failed to send professor rejection email", e);
+        }
     }
 } 
