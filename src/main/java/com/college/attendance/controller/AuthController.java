@@ -24,7 +24,9 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 import jakarta.validation.Valid;
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Random;
 
 @RestController
@@ -76,7 +78,7 @@ public class AuthController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<String>> register(@Valid @RequestBody RegisterRequest registerRequest) {
+    public ResponseEntity<ApiResponse<Map<String, String>>> register(@Valid @RequestBody RegisterRequest registerRequest) {
         if (userRepository.findByUsername(registerRequest.getUsername()).isPresent()) {
             return ResponseEntity
                 .badRequest()
@@ -109,6 +111,14 @@ public class AuthController {
         logger.info("DEBUG_VERIFICATION_CODE: User {} with email {} has verification code: {}", 
             user.getUsername(), user.getEmail(), verificationCode);
         
+        Map<String, String> responseData = new HashMap<>();
+        responseData.put("email", user.getEmail());
+        // Expose verification code in the response for testing purposes
+        // IMPORTANT: This should be removed in a production environment once email sending is confirmed working
+        responseData.put("verificationCode", verificationCode);
+        responseData.put("message", "A verification code has been sent to " + user.getEmail() + 
+            ". If you don't receive it, check logs or contact support.");
+        
         try {
             // Send verification email
             emailService.sendVerificationEmail(user.getEmail(), verificationCode);
@@ -116,13 +126,12 @@ public class AuthController {
         } catch (Exception e) {
             logger.error("Failed to send verification email to user: {}. Error: {}", 
                 user.getUsername(), e.getMessage(), e);
-            // We still return success since the user was created, but log the email failure
+            responseData.put("emailStatus", "Email sending failed, but you can still verify using the verification code");
         }
         
         return ResponseEntity.ok(ApiResponse.success(
             "User registered successfully. Please check your email for verification code.",
-            "A verification code has been sent to " + user.getEmail() + 
-            ". If you don't receive it, check logs or contact support."
+            responseData
         ));
     }
     

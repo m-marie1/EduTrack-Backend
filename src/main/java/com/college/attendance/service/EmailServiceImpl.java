@@ -3,6 +3,7 @@ package com.college.attendance.service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.mail.SimpleMailMessage;
@@ -15,7 +16,8 @@ public class EmailServiceImpl implements EmailService {
     
     private static final Logger log = LoggerFactory.getLogger(EmailServiceImpl.class);
     
-    @Value("${spring.mail.username}")
+    @Autowired
+    @Qualifier("emailFrom")
     private String fromEmail;
     
     @Autowired
@@ -31,7 +33,7 @@ public class EmailServiceImpl implements EmailService {
                        "\n\nPlease use this code to verify your email address.");
         
         try {
-            log.info("Attempting to send verification email to: {}", to);
+            log.info("Attempting to send verification email to: {} from: {}", to, fromEmail);
             mailSender.send(message);
             log.info("Verification email sent successfully to: {}", to);
         } catch (Exception e) {
@@ -50,7 +52,7 @@ public class EmailServiceImpl implements EmailService {
                        "\n\nPlease use this token to reset your password.");
         
         try {
-            log.info("Attempting to send password reset email to: {}", to);
+            log.info("Attempting to send password reset email to: {} from: {}", to, fromEmail);
             mailSender.send(message);
             log.info("Password reset email sent successfully to: {}", to);
         } catch (Exception e) {
@@ -71,7 +73,7 @@ public class EmailServiceImpl implements EmailService {
                        "\n\nPlease change your password after your first login.");
         
         try {
-            log.info("Attempting to send professor approval email to: {}", to);
+            log.info("Attempting to send professor approval email to: {} from: {}", to, fromEmail);
             mailSender.send(message);
             log.info("Professor approval email sent successfully to: {}", to);
         } catch (Exception e) {
@@ -91,7 +93,7 @@ public class EmailServiceImpl implements EmailService {
                        "\n\nFeel free to submit a new request or contact support for more information.");
         
         try {
-            log.info("Attempting to send professor rejection email to: {}", to);
+            log.info("Attempting to send professor rejection email to: {} from: {}", to, fromEmail);
             mailSender.send(message);
             log.info("Professor rejection email sent successfully to: {}", to);
         } catch (Exception e) {

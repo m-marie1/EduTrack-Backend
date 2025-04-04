@@ -32,6 +32,9 @@ public class EmailConfig {
 
     @Value("${spring.mail.password}")
     private String password;
+    
+    @Value("${spring.mail.from:info@edutrack.com}")
+    private String fromEmail;
 
     @Bean
     public JavaMailSender javaMailSender() {
@@ -41,7 +44,8 @@ public class EmailConfig {
         mailSender.setUsername(username);
         mailSender.setPassword(password);
         
-        log.info("Configuring email with host: {}, port: {}, username: {}", host, port, username);
+        log.info("Configuring email with host: {}, port: {}, username: {}, from: {}", 
+                host, port, username, fromEmail);
         
         Properties props = mailSender.getJavaMailProperties();
         props.put("mail.transport.protocol", "smtp");
@@ -51,8 +55,17 @@ public class EmailConfig {
         props.put("mail.smtp.timeout", "10000"); // 10 seconds timeout
         props.put("mail.smtp.connectiontimeout", "10000"); // 10 seconds connection timeout
         
+        // This fixes the issue with the default sender address
+        props.put("mail.smtp.from", fromEmail);
+        
         log.info("Email configuration complete with properties: {}", props);
         
         return mailSender;
+    }
+    
+    // This bean makes the fromEmail available to inject in EmailServiceImpl
+    @Bean
+    public String emailFrom() {
+        return fromEmail;
     }
 } 
