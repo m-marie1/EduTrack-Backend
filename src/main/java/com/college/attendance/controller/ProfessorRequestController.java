@@ -36,10 +36,9 @@ public class ProfessorRequestController {
     @PostMapping
     public ResponseEntity<ApiResponse<ProfessorRequest>> submitRequest(
             @Valid @RequestBody ProfessorRequestDto requestDto) {
-        // Get the authenticated user
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-
+        
+        // Remove authentication check - allow unauthenticated submissions
+        
         // Check if email already exists
         if (userRepository.findByEmail(requestDto.getEmail()).isPresent()) {
             return ResponseEntity.badRequest()
@@ -62,7 +61,8 @@ public class ProfessorRequestController {
         request.setAdditionalInfo(requestDto.getAdditionalInfo());
         request.setRequestDate(LocalDateTime.now());
         request.setStatus(RequestStatus.PENDING);
-        request.setReviewedBy(username); // Store the requester's username
+        
+        // No reviewer yet since this is just a submission
         
         ProfessorRequest savedRequest = requestRepository.save(request);
         

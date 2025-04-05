@@ -37,11 +37,14 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 .requestMatchers("/h2-console/**").permitAll()
                 .requestMatchers("/api/auth/**").permitAll()
-                .requestMatchers("/api/professor-requests/**").authenticated()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/professor-requests").permitAll()
+                .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/upload/public").permitAll()
+                .requestMatchers("/api/professor-requests/pending").hasAuthority("ADMIN")
+                .requestMatchers("/api/professor-requests/*/review").hasAuthority("ADMIN")
                 .requestMatchers("/actuator/health", "/actuator/info").permitAll()
-                .requestMatchers("/actuator/**").hasRole("ADMIN")
-                .requestMatchers("/api/admin/**").hasRole("ADMIN")
-                .requestMatchers("/api/professor/**").hasRole("PROFESSOR")
+                .requestMatchers("/actuator/**").hasAuthority("ADMIN")
+                .requestMatchers("/api/admin/**").hasAuthority("ADMIN")
+                .requestMatchers("/api/professor/**").hasAuthority("PROFESSOR")
                 .anyRequest().authenticated()
             )
             .sessionManagement(session -> session
