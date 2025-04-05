@@ -2,9 +2,13 @@ package com.college.attendance.controller;
 
 import com.college.attendance.dto.CourseDto;
 import com.college.attendance.model.Course;
+import com.college.attendance.model.User;
 import com.college.attendance.repository.CourseRepository;
+import com.college.attendance.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.*;
 
 import java.time.DayOfWeek;
@@ -18,6 +22,7 @@ import java.util.stream.Collectors;
 public class CourseController {
 
     private final CourseRepository courseRepository;
+    private final UserRepository userRepository;
     
     @GetMapping
     public ResponseEntity<ApiResponse<List<CourseDto>>> getAllCourses() {
@@ -41,6 +46,23 @@ public class CourseController {
             .collect(Collectors.toList());
             
         return ResponseEntity.ok(ApiResponse.success(currentCourses));
+    }
+    
+    @GetMapping("/enrolled")
+    public ResponseEntity<ApiResponse<List<CourseDto>>> getEnrolledCourses() {
+        // Get the authenticated user
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        // Get courses the user is enrolled in
+        List<CourseDto> enrolledCourses = user.getCourses().stream()
+            .map(CourseDto::fromEntity)
+            .collect(Collectors.toList());
+            
+        return ResponseEntity.ok(ApiResponse.success(enrolledCourses));
     }
     
     @PostMapping("/sample")
