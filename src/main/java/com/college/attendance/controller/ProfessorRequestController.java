@@ -71,9 +71,18 @@ public class ProfessorRequestController {
         );
     }
 
-    @GetMapping("/pending")
+    @GetMapping
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ApiResponse<List<ProfessorRequest>>> getPendingRequests() {
+        List<ProfessorRequest> pendingRequests = 
+            requestRepository.findByStatus(RequestStatus.PENDING);
+        
+        return ResponseEntity.ok(ApiResponse.success(pendingRequests));
+    }
+
+    @GetMapping("/pending")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<ApiResponse<List<ProfessorRequest>>> getPendingRequestsAlternate() {
         List<ProfessorRequest> pendingRequests = 
             requestRepository.findByStatus(RequestStatus.PENDING);
         

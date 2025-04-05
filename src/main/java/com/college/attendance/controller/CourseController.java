@@ -136,4 +136,62 @@ public class CourseController {
         
         return ResponseEntity.ok(ApiResponse.success("Created 5 sample courses"));
     }
+    
+    @PostMapping
+    public ResponseEntity<ApiResponse<CourseDto>> createCourse(@RequestBody CourseDto courseDto) {
+        Course course = new Course();
+        course.setCourseCode(courseDto.getCourseCode());
+        course.setCourseName(courseDto.getCourseName());
+        course.setDescription(courseDto.getDescription());
+        course.setStartTime(courseDto.getStartTime());
+        course.setEndTime(courseDto.getEndTime());
+        
+        // Use days directly from the DTO if present
+        if (courseDto.getDays() != null) {
+            course.setDays(courseDto.getDays());
+        } else {
+            // Set all days as default
+            Set<DayOfWeek> allDays = new HashSet<>(Arrays.asList(
+                DayOfWeek.MONDAY, DayOfWeek.TUESDAY, DayOfWeek.WEDNESDAY, 
+                DayOfWeek.THURSDAY, DayOfWeek.FRIDAY
+            ));
+            course.setDays(allDays);
+        }
+        
+        Course savedCourse = courseRepository.save(course);
+        return ResponseEntity.ok(ApiResponse.success("Course created successfully", CourseDto.fromEntity(savedCourse)));
+    }
+    
+    @PutMapping("/{id}")
+    public ResponseEntity<ApiResponse<CourseDto>> updateCourse(@PathVariable Long id, @RequestBody CourseDto courseDto) {
+        Optional<Course> existingCourse = courseRepository.findById(id);
+        if (!existingCourse.isPresent()) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        Course course = existingCourse.get();
+        course.setCourseCode(courseDto.getCourseCode());
+        course.setCourseName(courseDto.getCourseName());
+        course.setDescription(courseDto.getDescription());
+        course.setStartTime(courseDto.getStartTime());
+        course.setEndTime(courseDto.getEndTime());
+        
+        // Use days directly from the DTO if present
+        if (courseDto.getDays() != null) {
+            course.setDays(courseDto.getDays());
+        }
+        
+        Course updatedCourse = courseRepository.save(course);
+        return ResponseEntity.ok(ApiResponse.success("Course updated successfully", CourseDto.fromEntity(updatedCourse)));
+    }
+    
+    @DeleteMapping("/{id}")
+    public ResponseEntity<ApiResponse<Void>> deleteCourse(@PathVariable Long id) {
+        if (!courseRepository.existsById(id)) {
+            return ResponseEntity.notFound().build();
+        }
+        
+        courseRepository.deleteById(id);
+        return ResponseEntity.ok(ApiResponse.success("Course deleted successfully", null));
+    }
 }
