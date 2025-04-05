@@ -72,16 +72,35 @@ public class ProfessorRequestController {
     }
 
     @GetMapping
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<List<ProfessorRequest>>> getPendingRequests() {
-        List<ProfessorRequest> pendingRequests = 
-            requestRepository.findByStatus(RequestStatus.PENDING);
-        
-        return ResponseEntity.ok(ApiResponse.success(pendingRequests));
+        try {
+            List<ProfessorRequest> pendingRequests = 
+                requestRepository.findByStatus(RequestStatus.PENDING);
+            
+            return ResponseEntity.ok(ApiResponse.success(pendingRequests));
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                .body(ApiResponse.error("Failed to fetch pending requests: " + e.getMessage()));
+        }
+    }
+
+    @GetMapping("/pending")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<ApiResponse<List<ProfessorRequest>>> getPendingRequestsAlternate() {
+        try {
+            List<ProfessorRequest> pendingRequests = 
+                requestRepository.findByStatus(RequestStatus.PENDING);
+            
+            return ResponseEntity.ok(ApiResponse.success(pendingRequests));
+        } catch (Exception e) {
+            return ResponseEntity.status(500)
+                .body(ApiResponse.error("Failed to fetch pending requests: " + e.getMessage()));
+        }
     }
 
     @PutMapping("/{requestId}/review")
-    @PreAuthorize("hasAuthority('ADMIN')")
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<ApiResponse<ProfessorRequest>> reviewRequest(
             @PathVariable Long requestId, 
             @Valid @RequestBody ReviewRequestDto reviewDto) {

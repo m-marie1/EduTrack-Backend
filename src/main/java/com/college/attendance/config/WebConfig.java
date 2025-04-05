@@ -34,10 +34,16 @@ public class WebConfig implements WebMvcConfigurer {
     @Override
     public void addCorsMappings(CorsRegistry registry) {
         registry.addMapping("/**")
-                .allowedOrigins(allowedOrigins)
-                .allowedMethods(allowedMethods)
+                .allowedOrigins(
+                    "http://localhost:3000",
+                    "http://localhost:5000", 
+                    "http://localhost", 
+                    "https://fcit-edutrack.vercel.app",
+                    "https://edutrack-frontend.vercel.app"
+                )
+                .allowedMethods("GET", "POST", "PUT", "DELETE", "OPTIONS")
                 .allowedHeaders("*")
                 .allowCredentials(true)
-                .maxAge(maxAge);
+                .maxAge(3600);
     }
 }

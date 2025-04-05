@@ -35,10 +35,11 @@ public class JwtTokenUtil {
         // Add a unique token ID to prevent reuse
         claims.put("tokenId", UUID.randomUUID().toString());
         
-        // Add user role to the token
-        userDetails.getAuthorities().forEach(authority -> 
-            claims.put("role", authority.getAuthority())
-        );
+        // Add user role to the token, making sure to extract the raw roles without "ROLE_" prefix
+        userDetails.getAuthorities().forEach(authority -> {
+            String role = authority.getAuthority();
+            claims.put("role", role);
+        });
         
         // Log the claims for debugging
         System.out.println("Generated token with claims: " + claims);
