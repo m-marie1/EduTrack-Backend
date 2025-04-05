@@ -45,17 +45,36 @@ public class AuthController {
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<JwtResponse>> login(@Valid @RequestBody LoginRequest loginRequest) {
         try {
+            String username;
+            
+            // Check if email is provided instead of username
+            if (loginRequest.getUsername() == null || loginRequest.getUsername().isEmpty()) {
+                if (loginRequest.getEmail() == null || loginRequest.getEmail().isEmpty()) {
+                    return ResponseEntity.badRequest()
+                        .body(ApiResponse.error("Either username or email must be provided"));
+                }
+                
+                // Find user by email
+                User user = userRepository.findByEmail(loginRequest.getEmail())
+                    .orElseThrow(() -> new BadCredentialsException("Invalid email or password"));
+                
+                username = user.getUsername();
+            } else {
+                username = loginRequest.getUsername();
+            }
+            
+            // Authenticate with username
             authenticationManager.authenticate(
                 new UsernamePasswordAuthenticationToken(
-                    loginRequest.getUsername(),
+                    username,
                     loginRequest.getPassword()
                 )
             );
             
             final UserDetails userDetails = userDetailsService
-                .loadUserByUsername(loginRequest.getUsername());
+                .loadUserByUsername(username);
             
-            User user = userRepository.findByUsername(loginRequest.getUsername())
+            User user = userRepository.findByUsername(username)
                 .orElseThrow(() -> new IllegalArgumentException("User not found"));
             
             // Check if email is verified
@@ -73,7 +92,7 @@ public class AuthController {
         } catch (BadCredentialsException e) {
             return ResponseEntity
                 .badRequest()
-                .body(ApiResponse.error("Invalid username or password"));
+                .body(ApiResponse.error("Invalid credentials"));
         }
     }
 

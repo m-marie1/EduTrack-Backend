@@ -13,4 +13,6 @@ public interface ProfessorRequestRepository extends JpaRepository<ProfessorReque
     Optional<ProfessorRequest> findByEmail(String email);
     
     List<ProfessorRequest> findByStatus(RequestStatus status);
+    
+    Optional<ProfessorRequest> findByEmailAndStatus(String email, RequestStatus status);
 } 

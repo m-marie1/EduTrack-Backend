@@ -12,6 +12,8 @@ import com.college.attendance.service.EmailService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.*;
 
@@ -25,30 +27,33 @@ import java.util.Random;
 @RequestMapping("/api/professor-requests")
 @RequiredArgsConstructor
 public class ProfessorRequestController {
-    
+
     private final ProfessorRequestRepository requestRepository;
     private final UserRepository userRepository;
     private final EmailService emailService;
     private final PasswordEncoder passwordEncoder;
-    
+
     @PostMapping
     public ResponseEntity<ApiResponse<ProfessorRequest>> submitRequest(
             @Valid @RequestBody ProfessorRequestDto requestDto) {
-        
-        // Check if email already exists in users
+        // Get the authenticated user
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+
+        // Check if email already exists
         if (userRepository.findByEmail(requestDto.getEmail()).isPresent()) {
             return ResponseEntity.badRequest()
-                .body(ApiResponse.error("Email is already registered"));
+                .body(ApiResponse.error("A user with this email already exists"));
         }
-        
+
         // Check if there's already a pending request for this email
         Optional<ProfessorRequest> existingRequest = requestRepository.findByEmail(requestDto.getEmail());
         if (existingRequest.isPresent() && 
             existingRequest.get().getStatus() == RequestStatus.PENDING) {
             return ResponseEntity.badRequest()
-                .body(ApiResponse.error("A request for this email is already pending"));
+                .body(ApiResponse.error("A pending request for this email already exists"));
         }
-        
+
         ProfessorRequest request = new ProfessorRequest();
         request.setFullName(requestDto.getFullName());
         request.setEmail(requestDto.getEmail());
@@ -57,6 +62,7 @@ public class ProfessorRequestController {
         request.setAdditionalInfo(requestDto.getAdditionalInfo());
         request.setRequestDate(LocalDateTime.now());
         request.setStatus(RequestStatus.PENDING);
+        request.setReviewedBy(username); // Store the requester's username
         
         ProfessorRequest savedRequest = requestRepository.save(request);
         
@@ -64,86 +70,99 @@ public class ProfessorRequestController {
             ApiResponse.success("Request submitted successfully", savedRequest)
         );
     }
-    
-    @GetMapping
-    @PreAuthorize("hasRole('ADMIN')")
+
+    @GetMapping("/pending")
+    @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ApiResponse<List<ProfessorRequest>>> getPendingRequests() {
         List<ProfessorRequest> pendingRequests = 
             requestRepository.findByStatus(RequestStatus.PENDING);
         
         return ResponseEntity.ok(ApiResponse.success(pendingRequests));
     }
-    
-    @PostMapping("/{requestId}/review")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<ApiResponse<String>> reviewRequest(
-            @PathVariable Long requestId,
+
+    @PutMapping("/{requestId}/review")
+    @PreAuthorize("hasAuthority('ADMIN')")
+    public ResponseEntity<ApiResponse<ProfessorRequest>> reviewRequest(
+            @PathVariable Long requestId, 
             @Valid @RequestBody ReviewRequestDto reviewDto) {
         
         ProfessorRequest request = requestRepository.findById(requestId)
-            .orElseThrow(() -> new IllegalArgumentException("Request not found"));
+                .orElseThrow(() -> new IllegalArgumentException("Request not found"));
         
         if (request.getStatus() != RequestStatus.PENDING) {
             return ResponseEntity.badRequest()
-                .body(ApiResponse.error("This request has already been processed"));
+                .body(ApiResponse.error("This request has already been reviewed"));
         }
         
+        // Get reviewer username
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String reviewerUsername = authentication.getName();
+        
         request.setReviewDate(LocalDateTime.now());
-        request.setReviewedBy(reviewDto.getReviewedBy());
+        request.setReviewedBy(reviewerUsername);
         
         if (reviewDto.getApproved()) {
-            // Approve the request and create a professor account
+            // Approve the request
             request.setStatus(RequestStatus.APPROVED);
             
-            // Generate a random password
+            // Generate a random password for the new professor
             String password = generateRandomPassword();
             
+            // Create a professor account
             User professor = new User();
+            professor.setUsername(request.getEmail().split("@")[0]); // Use part of email as username
+            professor.setPassword(passwordEncoder.encode(password));
             professor.setFullName(request.getFullName());
             professor.setEmail(request.getEmail());
-            professor.setUsername(request.getEmail()); // Use email as username
-            professor.setPassword(passwordEncoder.encode(password));
             professor.setRole(Role.PROFESSOR);
-            professor.setEmailVerified(true); // Auto-verify for professors
+            professor.setEmailVerified(true);
             professor.setProfessorRequest(request);
             
             userRepository.save(professor);
             
-            // Send approval email with login credentials
-            emailService.sendProfessorRequestApprovalEmail(request.getEmail(), password);
-            
-            return ResponseEntity.ok(ApiResponse.success(
-                "Professor account created successfully",
-                "Login credentials have been sent to the professor's email"
-            ));
+            // Send email with credentials
+            try {
+                emailService.sendProfessorRequestApprovalEmail(
+                        request.getEmail(), 
+                        password
+                );
+            } catch (Exception e) {
+                // Log but continue, as the account has been created
+                System.err.println("Failed to send approval email: " + e.getMessage());
+            }
         } else {
             // Reject the request
             request.setStatus(RequestStatus.REJECTED);
             request.setRejectionReason(reviewDto.getRejectionReason());
             
             // Send rejection email
-            emailService.sendProfessorRequestRejectionEmail(
-                request.getEmail(), 
-                reviewDto.getRejectionReason()
-            );
-            
-            return ResponseEntity.ok(ApiResponse.success(
-                "Request rejected",
-                "A rejection email has been sent"
-            ));
+            try {
+                emailService.sendProfessorRequestRejectionEmail(
+                    request.getEmail(),
+                    reviewDto.getRejectionReason()
+                );
+            } catch (Exception e) {
+                // Log but continue
+                System.err.println("Failed to send rejection email: " + e.getMessage());
+            }
         }
+        
+        requestRepository.save(request);
+        
+        return ResponseEntity.ok(ApiResponse.success(
+                reviewDto.getApproved() ? "Request approved successfully" : "Request rejected successfully",
+                request
+        ));
     }
     
     private String generateRandomPassword() {
-        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789";
+        String chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789!@#$%^&*()-_=+";
         StringBuilder sb = new StringBuilder();
         Random random = new Random();
-        
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < 12; i++) {
             int index = random.nextInt(chars.length());
             sb.append(chars.charAt(index));
         }
-        
         return sb.toString();
     }
 } 

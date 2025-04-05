@@ -100,6 +100,47 @@ public class AttendanceController {
         return ResponseEntity.ok(ApiResponse.success(attendanceList));
     }
     
+    @GetMapping("/user/username/{username}/course/{courseId}")
+    public ResponseEntity<ApiResponse<List<AttendanceResponseDto>>> getUserAttendanceForCourseByUsername(
+            @PathVariable String username,
+            @PathVariable Long courseId) {
+        try {
+            // Find the user by username
+            User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + username));
+                
+            List<AttendanceResponseDto> attendanceList = 
+                attendanceService.getUserAttendanceForCourse(user.getId(), courseId);
+            
+            return ResponseEntity.ok(ApiResponse.success(attendanceList));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(404).body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(ApiResponse.error("Error retrieving attendance: " + e.getMessage()));
+        }
+    }
+    
+    @GetMapping("/user/current/course/{courseId}")
+    public ResponseEntity<ApiResponse<List<AttendanceResponseDto>>> getCurrentUserAttendanceForCourse(
+            @PathVariable Long courseId) {
+        try {
+            // Get the authenticated user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+            User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+                
+            List<AttendanceResponseDto> attendanceList = 
+                attendanceService.getUserAttendanceForCourse(user.getId(), courseId);
+            
+            return ResponseEntity.ok(ApiResponse.success(attendanceList));
+        } catch (ResourceNotFoundException e) {
+            return ResponseEntity.status(404).body(ApiResponse.error(e.getMessage()));
+        } catch (Exception e) {
+            return ResponseEntity.status(500).body(ApiResponse.error("Error retrieving attendance: " + e.getMessage()));
+        }
+    }
+    
     @GetMapping("/user/{userId}/date/{date}")
     public ResponseEntity<ApiResponse<List<AttendanceResponseDto>>> getUserAttendanceForDate(
             @PathVariable Long userId,
