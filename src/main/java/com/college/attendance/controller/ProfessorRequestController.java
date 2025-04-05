@@ -80,15 +80,6 @@ public class ProfessorRequestController {
         return ResponseEntity.ok(ApiResponse.success(pendingRequests));
     }
 
-    @GetMapping("/pending")
-    @PreAuthorize("hasAuthority('ADMIN')")
-    public ResponseEntity<ApiResponse<List<ProfessorRequest>>> getPendingRequestsAlternate() {
-        List<ProfessorRequest> pendingRequests = 
-            requestRepository.findByStatus(RequestStatus.PENDING);
-        
-        return ResponseEntity.ok(ApiResponse.success(pendingRequests));
-    }
-
     @PutMapping("/{requestId}/review")
     @PreAuthorize("hasAuthority('ADMIN')")
     public ResponseEntity<ApiResponse<ProfessorRequest>> reviewRequest(

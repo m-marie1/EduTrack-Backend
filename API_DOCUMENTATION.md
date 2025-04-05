@@ -3,12 +3,17 @@
 ## Base URL
 
 For development: `http://localhost:8080`
+For production: `https://edutrack-backend-orms.onrender.com`
+
+All API endpoints are prefixed with `/api`.
 
 ## Authentication
 
-The API uses JWT (JSON Web Token) based authentication.
+The API uses JWT (JSON Web Token) based authentication. Roles included in the token determine access rights.
 
 ### Register a New User
+
+Registers a new user with the `STUDENT` role by default. Sends a verification email.
 
 ```
 POST /api/auth/register
@@ -25,18 +30,24 @@ POST /api/auth/register
 }
 ```
 
-**Response:**
+**Response (Success):**
 
 ```json
 {
   "success": true,
   "message": "User registered successfully. Please check your email for verification code.",
-  "data": "A verification code has been sent to john.doe@example.com",
-  "timestamp": "2023-03-23T12:34:56.789"
+  "data": {
+    "email": "john.doe@example.com",
+    "verificationCode": "123456", // Included for debugging/testing, remove in final production
+    "message": "A verification code has been sent to john.doe@example.com. If you don't receive it, check logs or contact support."
+  },
+  "timestamp": "..."
 }
 ```
 
 ### Verify Email
+
+Verifies the user's email using the code sent during registration. Returns a JWT token upon success.
 
 ```
 POST /api/auth/verify-email
@@ -51,50 +62,54 @@ POST /api/auth/verify-email
 }
 ```
 
-**Response:**
+**Response (Success):**
 
 ```json
 {
   "success": true,
   "message": "Email verified successfully",
   "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "token": "eyJhbGciOiJIUzUxMiJ9...",
     "username": "john.doe",
     "fullName": "John Doe",
-    "email": "john.doe@example.com"
+    "email": "john.doe@example.com",
+    "role": "STUDENT" // Role included in response
   },
-  "timestamp": "2023-03-23T12:34:56.789"
+  "timestamp": "..."
 }
 ```
 
 ### Login
 
+Authenticates a user and returns a JWT token with user details including the role.
+
 ```
 POST /api/auth/login
 ```
 
-**Request Body:**
+**Request Body:** (Can use username or email)
 
 ```json
 {
-  "username": "john.doe",
+  "username": "john.doe", // or "email": "john.doe@example.com"
   "password": "password123"
 }
 ```
 
-**Response:**
+**Response (Success):**
 
 ```json
 {
   "success": true,
   "message": "Login successful",
   "data": {
-    "token": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...",
+    "token": "eyJhbGciOiJIUzUxMiJ9...",
     "username": "john.doe",
     "fullName": "John Doe",
-    "email": "john.doe@example.com"
+    "email": "john.doe@example.com",
+    "role": "STUDENT" // Role included in response
   },
-  "timestamp": "2023-03-23T12:34:56.789"
+  "timestamp": "..."
 }
 ```
 
@@ -102,10 +117,14 @@ POST /api/auth/login
 
 ### Get All Courses
 
+Retrieves a list of all available courses.
+
 ```
 GET /api/courses
 Authorization: Bearer YOUR_TOKEN_HERE
 ```
+
+**Permissions:** `ADMIN`
 
 **Response:**
 
@@ -122,85 +141,226 @@ Authorization: Bearer YOUR_TOKEN_HERE
       "startTime": "09:00:00",
       "endTime": "10:30:00",
       "days": ["MONDAY", "WEDNESDAY"]
-    },
-    ...
+    }
+    // ... more courses
   ],
-  "timestamp": "2023-03-23T12:34:56.789"
+  "timestamp": "..."
+}
+```
+
+### Create Course (Admin Only)
+
+Creates a new course.
+
+```
+POST /api/courses
+Authorization: Bearer ADMIN_TOKEN_HERE
+```
+
+**Permissions:** `ADMIN`
+
+**Request Body:**
+
+```json
+{
+  "courseCode": "CS101",
+  "courseName": "Introduction to Programming",
+  "description": "Learn the basics of programming with Java",
+  "startTime": "08:00:00",
+  "endTime": "09:30:00",
+  "days": ["MONDAY", "WEDNESDAY", "FRIDAY"] // Set of DayOfWeek enums
+}
+```
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "message": "Course created successfully",
+  "data": {
+    // Details of the created course
+    "id": 1,
+    "courseCode": "CS101"
+    // ... other fields
+  },
+  "timestamp": "..."
+}
+```
+
+### Update Course (Admin Only)
+
+Updates an existing course by its ID.
+
+```
+PUT /api/courses/{id}
+Authorization: Bearer ADMIN_TOKEN_HERE
+```
+
+**Permissions:** `ADMIN`
+
+**Request Body:** (Same structure as Create Course)
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "message": "Course updated successfully",
+  "data": {
+    // Details of the updated course
+    "id": 1,
+    "courseCode": "CS101"
+    // ... other fields
+  },
+  "timestamp": "..."
+}
+```
+
+### Delete Course (Admin Only)
+
+Deletes a course by its ID.
+
+```
+DELETE /api/courses/{id}
+Authorization: Bearer ADMIN_TOKEN_HERE
+```
+
+**Permissions:** `ADMIN`
+
+**Response (Success):**
+
+```json
+{
+  "success": true,
+  "message": "Course deleted successfully",
+  "data": null,
+  "timestamp": "..."
 }
 ```
 
 ### Get Current Active Courses
+
+Retrieves courses currently in session based on the server's time.
 
 ```
 GET /api/courses/current
 Authorization: Bearer YOUR_TOKEN_HERE
 ```
 
-**Response:** Similar to Get All Courses, but filtered to currently active courses.
+**Permissions:** Authenticated User (`STUDENT`, `PROFESSOR`, `ADMIN`)
+
+**Response:** Similar structure to Get All Courses, filtered for active sessions.
+
+### Get Enrolled Courses
+
+Retrieves courses the currently authenticated user is enrolled in.
+
+```
+GET /api/courses/enrolled
+Authorization: Bearer YOUR_TOKEN_HERE
+```
+
+**Permissions:** Authenticated User (`STUDENT`, `PROFESSOR`, `ADMIN`)
+
+**Response:** Similar structure to Get All Courses, filtered for enrolled courses.
+
+### Create Sample Courses (For Testing)
+
+Creates sample courses if none exist.
+
+```
+POST /api/courses/sample
+Authorization: Bearer YOUR_TOKEN_HERE
+```
+
+**Permissions:** Authenticated User (can be restricted further if needed)
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Created 5 sample courses" // or "Sample courses already exist"
+}
+```
 
 ## Attendance
 
 ### Enroll in a Course
+
+Enrolls the authenticated user in the specified course.
 
 ```
 POST /api/attendance/enroll/{courseId}
 Authorization: Bearer YOUR_TOKEN_HERE
 ```
 
+**Permissions:** Authenticated User (`STUDENT`, `PROFESSOR`)
+
 **Response:**
 
 ```json
 {
   "success": true,
-  "message": "Successfully enrolled in Introduction to Computer Science",
-  "data": "You are now enrolled in CS101",
-  "timestamp": "2023-03-23T12:34:56.789"
+  "message": "Successfully enrolled in [Course Name]",
+  "data": "You are now enrolled in [Course Code]",
+  "timestamp": "..."
 }
 ```
 
 ### Record Attendance
+
+Records attendance for the authenticated user in the specified course. Requires validation (e.g., network identifier).
 
 ```
 POST /api/attendance/record
 Authorization: Bearer YOUR_TOKEN_HERE
 ```
 
+**Permissions:** Authenticated User (`STUDENT`, `PROFESSOR`)
+
 **Request Body:**
 
 ```json
 {
   "courseId": 1,
-  "networkIdentifier": "College-WiFi",
-  "verificationMethod": "WIFI"
+  "networkIdentifier": "College-WiFi", // Or other verification data
+  "verificationMethod": "WIFI" // Or other method like QR
 }
 ```
 
-**Response:**
+**Response (Success):**
 
 ```json
 {
   "success": true,
   "message": "Attendance recorded successfully",
   "data": {
+    // Details of the attendance record
     "id": 1,
     "studentName": "John Doe",
-    "studentId": "S54321",
+    "studentId": "S54321", // May be null or removed
     "courseCode": "CS101",
     "courseName": "Introduction to Computer Science",
-    "timestamp": "2023-03-23T12:34:56.789",
+    "timestamp": "...",
     "verified": true,
     "verificationMethod": "WIFI"
   },
-  "timestamp": "2023-03-23T12:34:56.789"
+  "timestamp": "..."
 }
 ```
 
 ### Get User Attendance for Course
 
+Retrieves attendance records for a specific user (by ID) in a specific course.
+
 ```
 GET /api/attendance/user/{userId}/course/{courseId}
 Authorization: Bearer YOUR_TOKEN_HERE
 ```
+
+**Permissions:** `ADMIN` or `PROFESSOR` (for their courses)
 
 **Response:**
 
@@ -209,29 +369,40 @@ Authorization: Bearer YOUR_TOKEN_HERE
   "success": true,
   "message": "Operation successful",
   "data": [
+    // List of attendance records
     {
-      "id": 1,
-      "studentName": "John Doe",
-      "studentId": "S54321",
-      "courseCode": "CS101",
-      "courseName": "Introduction to Computer Science",
-      "timestamp": "2023-03-23T09:15:00",
-      "verified": true,
-      "verificationMethod": "WIFI"
-    },
-    ...
+      "id": 1
+      // ... other fields
+    }
   ],
-  "timestamp": "2023-03-23T12:34:56.789"
+  "timestamp": "..."
 }
 ```
+
+### Get Current User Attendance for Course
+
+Retrieves attendance records for the _currently authenticated_ user in a specific course.
+
+```
+GET /api/attendance/user/current/course/{courseId}
+Authorization: Bearer YOUR_TOKEN_HERE
+```
+
+**Permissions:** Authenticated User (`STUDENT`, `PROFESSOR`)
+
+**Response:** Similar structure to Get User Attendance.
 
 ## Professor Requests
 
 ### Submit Professor Request
 
+Allows anyone (unauthenticated) to submit a request for a professor account. Requires details and an ID image upload.
+
 ```
 POST /api/professor-requests
 ```
+
+**Permissions:** Public
 
 **Request Body:**
 
@@ -239,39 +410,44 @@ POST /api/professor-requests
 {
   "fullName": "Professor Smith",
   "email": "prof.smith@university.edu",
-  "idImageUrl": "/uploads/id-12345.jpg",
+  "idImageUrl": "/uploads/unique-id-image.jpg", // URL returned by public file upload
   "department": "Computer Science",
   "additionalInfo": "Specialized in Artificial Intelligence"
 }
 ```
 
-**Response:**
+**Response (Success):**
 
 ```json
 {
   "success": true,
   "message": "Request submitted successfully",
   "data": {
+    // Details of the submitted request
     "id": 1,
     "fullName": "Professor Smith",
     "email": "prof.smith@university.edu",
-    "idImageUrl": "/uploads/id-12345.jpg",
+    "idImageUrl": "/uploads/unique-id-image.jpg",
     "department": "Computer Science",
     "additionalInfo": "Specialized in Artificial Intelligence",
     "status": "PENDING",
-    "requestDate": "2023-03-23T12:34:56.789"
+    "requestDate": "..."
   },
-  "timestamp": "2023-03-23T12:34:56.789"
+  "timestamp": "..."
 }
 ```
 
 ### Get All Pending Professor Requests (Admin Only)
+
+Retrieves all professor requests with the status `PENDING`.
 
 ```
 GET /api/professor-requests
 Authorization: Bearer ADMIN_TOKEN_HERE
 ```
 
+**Permissions:** `ADMIN`
+
 **Response:**
 
 ```json
@@ -279,393 +455,90 @@ Authorization: Bearer ADMIN_TOKEN_HERE
   "success": true,
   "message": "Operation successful",
   "data": [
+    // List of pending requests
     {
-      "id": 1,
-      "fullName": "Professor Smith",
-      "email": "prof.smith@university.edu",
-      "idImageUrl": "/uploads/id-12345.jpg",
-      "department": "Computer Science",
-      "additionalInfo": "Specialized in Artificial Intelligence",
-      "status": "PENDING",
-      "requestDate": "2023-03-23T12:34:56.789"
-    },
-    ...
+      "id": 1
+      // ... other fields from submit request response
+    }
   ],
-  "timestamp": "2023-03-23T12:34:56.789"
+  "timestamp": "..."
 }
 ```
 
 ### Review Professor Request (Admin Only)
 
+Allows an admin to approve or reject a pending professor request. If approved, creates a new user account with the `PROFESSOR` role and sends credentials via email.
+
 ```
-POST /api/professor-requests/{requestId}/review
+PUT /api/professor-requests/{requestId}/review
 Authorization: Bearer ADMIN_TOKEN_HERE
 ```
 
-**Request Body:**
+**Permissions:** `ADMIN`
+
+**Request Body (Approve):**
 
 ```json
 {
-  "approved": true,
-  "reviewedBy": "admin"
+  "approved": true
 }
 ```
 
-or
+**Request Body (Reject):**
 
 ```json
 {
   "approved": false,
-  "rejectionReason": "Insufficient credentials",
-  "reviewedBy": "admin"
+  "rejectionReason": "Insufficient credentials provided."
 }
 ```
 
-**Response:**
+**Response (Approval Success):**
 
 ```json
 {
   "success": true,
-  "message": "Professor account created successfully",
-  "data": "Login credentials have been sent to the professor's email",
-  "timestamp": "2023-03-23T12:34:56.789"
-}
-```
-
-## Quizzes
-
-### Create Quiz (Professor Only)
-
-```
-POST /api/quizzes
-Authorization: Bearer PROFESSOR_TOKEN_HERE
-```
-
-**Request Body:**
-
-```json
-{
-  "title": "Midterm Exam",
-  "description": "Covers chapters 1-5",
-  "courseId": 1,
-  "startDate": "2023-04-01T09:00:00",
-  "endDate": "2023-04-01T23:59:59",
-  "durationMinutes": 60,
-  "questions": [
-    {
-      "text": "What is the capital of France?",
-      "type": "MULTIPLE_CHOICE",
-      "points": 2,
-      "options": [
-        {
-          "text": "London",
-          "correct": false
-        },
-        {
-          "text": "Paris",
-          "correct": true
-        },
-        {
-          "text": "Rome",
-          "correct": false
-        }
-      ]
-    },
-    {
-      "text": "Define polymorphism",
-      "type": "TEXT_ANSWER",
-      "points": 5,
-      "correctAnswer": "Polymorphism is the ability of an object to take many forms"
-    }
-  ]
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Quiz created successfully",
+  "message": "Request approved successfully",
   "data": {
+    // Details of the reviewed request (status now APPROVED)
     "id": 1,
-    "title": "Midterm Exam",
-    "description": "Covers chapters 1-5",
-    "startDate": "2023-04-01T09:00:00",
-    "endDate": "2023-04-01T23:59:59",
-    "durationMinutes": 60,
-    "questions": [...]
-  },
-  "timestamp": "2023-03-23T12:34:56.789"
+    "status": "APPROVED"
+    // ... other fields
+  }
 }
 ```
 
-### Get Available Quizzes
-
-```
-GET /api/quizzes/available?courseId=1
-Authorization: Bearer YOUR_TOKEN_HERE
-```
-
-**Response:**
+**Response (Rejection Success):**
 
 ```json
 {
   "success": true,
-  "message": "Operation successful",
-  "data": [
-    {
-      "id": 1,
-      "title": "Midterm Exam",
-      "description": "Covers chapters 1-5",
-      "startDate": "2023-04-01T09:00:00",
-      "endDate": "2023-04-01T23:59:59",
-      "durationMinutes": 60
-    },
-    ...
-  ],
-  "timestamp": "2023-03-23T12:34:56.789"
-}
-```
-
-### Start Quiz (Student Only)
-
-```
-POST /api/quizzes/{quizId}/start
-Authorization: Bearer STUDENT_TOKEN_HERE
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Quiz started successfully",
+  "message": "Request rejected successfully",
   "data": {
+    // Details of the reviewed request (status now REJECTED)
     "id": 1,
-    "quiz": {...},
-    "student": {...},
-    "startTime": "2023-04-01T10:15:30",
-    "completed": false
-  },
-  "timestamp": "2023-03-23T12:34:56.789"
+    "status": "REJECTED",
+    "rejectionReason": "Insufficient credentials provided."
+    // ... other fields
+  }
 }
 ```
 
-### Submit Quiz (Student Only)
-
-```
-POST /api/quizzes/{quizId}/submit
-Authorization: Bearer STUDENT_TOKEN_HERE
-```
-
-**Request Body:**
-
-```json
-{
-  "quizId": 1,
-  "answers": [
-    {
-      "questionId": 1,
-      "selectedOptionId": 2
-    },
-    {
-      "questionId": 2,
-      "textAnswer": "Polymorphism is the ability of an object to take many forms"
-    }
-  ]
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Quiz submitted successfully",
-  "data": {
-    "id": 1,
-    "quiz": {...},
-    "student": {...},
-    "startTime": "2023-04-01T10:15:30",
-    "endTime": "2023-04-01T11:10:45",
-    "completed": true,
-    "score": 7,
-    "maxScore": 7
-  },
-  "timestamp": "2023-03-23T12:34:56.789"
-}
-```
-
-## Assignments
-
-### Create Assignment (Professor Only)
-
-```
-POST /api/assignments
-Authorization: Bearer PROFESSOR_TOKEN_HERE
-```
-
-**Request Body:**
-
-```json
-{
-  "title": "Final Project",
-  "description": "Implement a web application using Spring Boot",
-  "courseId": 1,
-  "dueDate": "2023-05-15T23:59:59",
-  "maxPoints": 100,
-  "files": [
-    {
-      "fileName": "project_requirements.pdf",
-      "fileUrl": "/uploads/project_requirements.pdf",
-      "contentType": "application/pdf",
-      "fileSize": 245789
-    }
-  ]
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Assignment created successfully",
-  "data": {
-    "id": 1,
-    "title": "Final Project",
-    "description": "Implement a web application using Spring Boot",
-    "course": {...},
-    "creator": {...},
-    "dueDate": "2023-05-15T23:59:59",
-    "createdAt": "2023-03-23T12:34:56.789",
-    "maxPoints": 100,
-    "files": [...]
-  },
-  "timestamp": "2023-03-23T12:34:56.789"
-}
-```
-
-### Get Active Assignments
-
-```
-GET /api/assignments/active?courseId=1
-Authorization: Bearer YOUR_TOKEN_HERE
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Operation successful",
-  "data": [
-    {
-      "id": 1,
-      "title": "Final Project",
-      "description": "Implement a web application using Spring Boot",
-      "dueDate": "2023-05-15T23:59:59",
-      "maxPoints": 100
-    },
-    ...
-  ],
-  "timestamp": "2023-03-23T12:34:56.789"
-}
-```
-
-### Submit Assignment (Student Only)
-
-```
-POST /api/assignments/{assignmentId}/submit
-Authorization: Bearer STUDENT_TOKEN_HERE
-```
-
-**Request Body:**
-
-```json
-{
-  "assignmentId": 1,
-  "notes": "My final project submission",
-  "files": [
-    {
-      "fileName": "FinalProject.zip",
-      "fileUrl": "/uploads/FinalProject.zip",
-      "contentType": "application/zip",
-      "fileSize": 3456789
-    }
-  ]
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Assignment submitted successfully",
-  "data": {
-    "id": 1,
-    "assignment": {...},
-    "student": {...},
-    "notes": "My final project submission",
-    "submissionDate": "2023-05-14T20:45:12",
-    "graded": false,
-    "late": false,
-    "files": [...]
-  },
-  "timestamp": "2023-03-23T12:34:56.789"
-}
-```
-
-### Grade Assignment Submission (Professor Only)
-
-```
-POST /api/assignments/submissions/{submissionId}/grade
-Authorization: Bearer PROFESSOR_TOKEN_HERE
-```
-
-**Request Body:**
-
-```json
-{
-  "score": 85,
-  "feedback": "Good work, but missing proper documentation"
-}
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Submission graded successfully",
-  "data": {
-    "id": 1,
-    "assignment": {...},
-    "student": {...},
-    "notes": "My final project submission",
-    "submissionDate": "2023-05-14T20:45:12",
-    "gradedDate": "2023-05-16T14:30:45",
-    "score": 85,
-    "feedback": "Good work, but missing proper documentation",
-    "graded": true,
-    "late": false,
-    "files": [...]
-  },
-  "timestamp": "2023-03-23T12:34:56.789"
-}
-```
+_(Note: Previous documentation mentioned sending credentials in the response data; this is generally insecure. Credentials should be sent securely via email, and the response confirms the action.)_
 
 ## File Upload
 
-### Upload File
+### Upload File (Authenticated)
+
+Uploads a file for authenticated users (e.g., assignment submissions).
 
 ```
 POST /api/upload
 Authorization: Bearer YOUR_TOKEN_HERE
 Content-Type: multipart/form-data
 ```
+
+**Permissions:** Authenticated User
 
 **Form Data:**
 
@@ -679,143 +552,60 @@ Content-Type: multipart/form-data
   "message": "File uploaded successfully",
   "data": {
     "fileName": "document.pdf",
-    "fileUrl": "/uploads/b4f9c8d7-e6f5-4a3b-b2d1-c0d9e8f7a6b5.pdf",
+    "fileUrl": "/uploads/unique-filename.pdf", // Relative URL to access the file
     "contentType": "application/pdf",
     "fileSize": 253421,
-    "uploadedAt": "2023-03-23T12:34:56.789"
+    "uploadedAt": "..."
   },
-  "timestamp": "2023-03-23T12:34:56.789"
+  "timestamp": "..."
 }
 ```
 
-## Admin API Access
+### Upload File (Public)
 
-### Getting an Admin JWT Token
-
-To access admin-protected endpoints, you need to log in with an administrator account:
+Uploads a file for public use cases, specifically for professor ID image uploads during requests.
 
 ```
-POST /api/auth/login
-Content-Type: application/json
-
-{
-  "username": "admin",
-  "password": "admin"
-}
+POST /api/upload/public
+Content-Type: multipart/form-data
 ```
 
-Response:
+**Permissions:** Public
 
-```json
-{
-  "success": true,
-  "message": "Login successful",
-  "data": {
-    "token": "eyJhbGciOiJIUzUxMiJ9...",
-    "username": "admin",
-    "fullName": "System Administrator",
-    "email": "admin@college.edu"
-  },
-  "timestamp": "2023-03-31T15:30:45.123"
-}
-```
+**Form Data:**
 
-Use the returned token in the `Authorization` header of subsequent requests:
+- `file`: The ID image file to upload
+
+**Response:** Same structure as the authenticated upload response. The `fileUrl` should be used in the `idImageUrl` field when submitting the professor request.
+
+## Quizzes (Placeholder)
+
+Endpoints for quiz creation, retrieval, starting, and submission exist but are not fully documented here yet. Requires `PROFESSOR` role for creation/management and `STUDENT` role for taking.
 
 ```
-Authorization: Bearer eyJhbGciOiJIUzUxMiJ9...
+POST /api/quizzes (Professor)
+GET /api/quizzes/available?courseId={id} (Student/Professor)
+POST /api/quizzes/{quizId}/start (Student)
+POST /api/quizzes/{quizId}/submit (Student)
 ```
 
-### Managing Professor Requests
+## Assignments (Placeholder)
 
-#### Get All Pending Professor Requests
-
-```
-GET /api/professor-requests
-Authorization: Bearer {ADMIN_TOKEN}
-```
-
-Response:
-
-```json
-{
-  "success": true,
-  "message": null,
-  "data": [
-    {
-      "id": 1,
-      "fullName": "John Doe",
-      "email": "john.doe@college.edu",
-      "idImageUrl": "uploads/id-image-123.jpg",
-      "department": "Computer Science",
-      "additionalInfo": "PhD in Computer Science",
-      "status": "PENDING",
-      "requestDate": "2023-03-30T10:15:30",
-      "reviewDate": null,
-      "reviewedBy": null,
-      "rejectionReason": null
-    }
-  ],
-  "timestamp": "2023-03-31T15:45:30.123"
-}
-```
-
-#### Review a Professor Request
+Endpoints for assignment creation, retrieval, submission, and grading exist but are not fully documented here yet. Requires `PROFESSOR` role for creation/grading and `STUDENT` role for submission.
 
 ```
-POST /api/professor-requests/{requestId}/review
-Authorization: Bearer {ADMIN_TOKEN}
-Content-Type: application/json
-
-{
-  "approved": true,
-  "rejectionReason": null,
-  "reviewedBy": "admin"
-}
+POST /api/assignments (Professor)
+GET /api/assignments/active?courseId={id} (Student/Professor)
+POST /api/assignments/{assignmentId}/submit (Student)
+POST /api/assignments/submissions/{submissionId}/grade (Professor)
 ```
 
-For rejection:
+## Admin User
 
-```json
-{
-  "approved": false,
-  "rejectionReason": "Insufficient qualifications",
-  "reviewedBy": "admin"
-}
-```
+An admin user is automatically created on application startup with the following default credentials (change in production):
 
-Response on approval:
+- **Username:** `admin_edutrack`
+- **Password:** `A9$k2pL8#xB7!fR3`
+- **Email:** `admin@edutrack.com`
 
-```json
-{
-  "success": true,
-  "message": "Professor account created successfully",
-  "data": "Login credentials have been sent to the professor's email",
-  "timestamp": "2023-03-31T15:50:20.456"
-}
-```
-
-### Admin User Creation in Production
-
-In a production environment, you should create an admin user securely using one of these methods:
-
-1. Use a database migration script to create the admin user during deployment
-2. Set up a secure bootstrap process that runs only on initial setup
-3. Use environment variables to configure admin credentials on first startup
-
-Example migration script approach:
-
-```sql
--- To be run manually or through a secure migration process
-INSERT INTO users (username, password, full_name, email, role, email_verified)
-VALUES (
-  'admin',
-  '$2a$10$rJH7kLTJCWxbE8qFbI4Tz.CXNJTvP9CFSvY9aLXpLxUgFn72QJMBy', -- bcrypt hash for 'secure_password'
-  'System Administrator',
-  'admin@yourdomain.com',
-  'ADMIN',
-  true
-);
-```
-
-Always use a strong password in production and follow security best practices.
+Use these credentials to log in via `POST /api/auth/login` to obtain an admin JWT token.
