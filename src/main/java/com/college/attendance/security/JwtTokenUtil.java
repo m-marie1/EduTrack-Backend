@@ -34,6 +34,15 @@ public class JwtTokenUtil {
         Map<String, Object> claims = new HashMap<>();
         // Add a unique token ID to prevent reuse
         claims.put("tokenId", UUID.randomUUID().toString());
+        
+        // Add user role to the token
+        userDetails.getAuthorities().forEach(authority -> 
+            claims.put("role", authority.getAuthority())
+        );
+        
+        // Log the claims for debugging
+        System.out.println("Generated token with claims: " + claims);
+        
         return createToken(claims, userDetails.getUsername());
     }
 

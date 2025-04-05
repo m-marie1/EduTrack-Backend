@@ -85,9 +85,22 @@ public class AuthController {
             
             final String token = jwtTokenUtil.generateToken(userDetails);
             
+            // Log user details and token for debugging
+            logger.info("User logged in: username={}, role={}", user.getUsername(), user.getRole());
+            logger.info("Generated token: {}", token);
+            
+            // Create response with user info including role
+            JwtResponse response = new JwtResponse(
+                token, 
+                user.getUsername(), 
+                user.getFullName(), 
+                user.getEmail(),
+                user.getRole().toString()
+            );
+            
             return ResponseEntity.ok(ApiResponse.success(
                 "Login successful",
-                new JwtResponse(token, user.getUsername(), user.getFullName(), user.getEmail())
+                response
             ));
         } catch (BadCredentialsException e) {
             return ResponseEntity
@@ -180,9 +193,21 @@ public class AuthController {
         
         final String token = jwtTokenUtil.generateToken(userDetails);
         
+        // Log verification and role for debugging
+        logger.info("Email verified for user: {} with role: {}", user.getUsername(), user.getRole());
+        
+        // Create response with user info including role
+        JwtResponse response = new JwtResponse(
+            token, 
+            user.getUsername(), 
+            user.getFullName(), 
+            user.getEmail(),
+            user.getRole().toString()
+        );
+        
         return ResponseEntity.ok(ApiResponse.success(
             "Email verified successfully",
-            new JwtResponse(token, user.getUsername(), user.getFullName(), user.getEmail())
+            response
         ));
     }
     
