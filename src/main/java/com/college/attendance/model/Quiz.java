@@ -1,5 +1,9 @@
 package com.college.attendance.model;
 
+import com.fasterxml.jackson.annotation.JsonIdentityInfo;
+import com.fasterxml.jackson.annotation.JsonIdentityReference;
+import com.fasterxml.jackson.annotation.JsonManagedReference;
+import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
 import lombok.Data;
@@ -13,6 +17,7 @@ import java.util.List;
 @Data
 @NoArgsConstructor
 @AllArgsConstructor
+@JsonIdentityInfo(generator = ObjectIdGenerators.PropertyGenerator.class, property = "id")
 public class Quiz {
     
     @Id
@@ -35,15 +40,19 @@ public class Quiz {
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
+    @JsonIdentityReference(alwaysAsId = true)
     private Course course;
     
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "creator_id", nullable = false)
+    @JsonIdentityReference(alwaysAsId = true)
     private User creator;
     
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL, orphanRemoval = true)
+    @JsonManagedReference
     private List<Question> questions;
     
     @OneToMany(mappedBy = "quiz", cascade = CascadeType.ALL)
+    @JsonManagedReference(value = "quiz-attempts")
     private List<QuizAttempt> attempts;
-} 
+}
