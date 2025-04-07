@@ -95,15 +95,30 @@ public class AssignmentController {
     @GetMapping("/active")
     public ResponseEntity<ApiResponse<List<Assignment>>> getActiveAssignments(
             @RequestParam Long courseId) {
-        
-        Course course = courseRepository.findById(courseId)
-            .orElseThrow(() -> new IllegalArgumentException("Course not found"));
-        
-        LocalDateTime now = LocalDateTime.now();
-        
-        List<Assignment> assignments = assignmentRepository.findByCourseAndDueDateAfter(course, now);
-        
-        return ResponseEntity.ok(ApiResponse.success(assignments));
+        try {
+            Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new IllegalArgumentException("Course not found"));
+            
+            LocalDateTime now = LocalDateTime.now();
+            
+            List<Assignment> assignments = assignmentRepository.findByCourseAndDueDateAfter(course, now);
+            
+            // Handle circular references by removing potentially problematic references
+            assignments.forEach(assignment -> {
+                // Break circular references
+                if (assignment.getSubmissions() != null) {
+                    assignment.getSubmissions().forEach(submission -> {
+                        submission.setAssignment(null);
+                    });
+                }
+            });
+            
+            return ResponseEntity.ok(ApiResponse.success(assignments));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                .body(ApiResponse.error("Error fetching active assignments: " + e.getMessage()));
+        }
     }
     
     @GetMapping("/{assignmentId}")
@@ -275,4 +290,4 @@ public class AssignmentController {
             ApiResponse.success("Assignment deleted successfully")
         );
     }
-} 
+}

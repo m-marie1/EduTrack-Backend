@@ -35,79 +35,95 @@ public class QuizController {
     @PostMapping
     @PreAuthorize("hasRole('PROFESSOR')")
     public ResponseEntity<ApiResponse<Quiz>> createQuiz(@Valid @RequestBody QuizDto quizDto) {
-        // Get the authenticated user
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-        User creator = userRepository.findByUsername(username)
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        
-        // Get the course
-        Course course = courseRepository.findById(quizDto.getCourseId())
-            .orElseThrow(() -> new IllegalArgumentException("Course not found"));
-        
-        // Create and save the quiz
-        Quiz quiz = new Quiz();
-        quiz.setTitle(quizDto.getTitle());
-        quiz.setDescription(quizDto.getDescription());
-        quiz.setCourse(course);
-        quiz.setCreator(creator);
-        quiz.setStartDate(quizDto.getStartDate());
-        quiz.setEndDate(quizDto.getEndDate());
-        quiz.setDurationMinutes(quizDto.getDurationMinutes());
-        
-        Quiz savedQuiz = quizRepository.save(quiz);
-        
-        // Create and save questions
-        List<Question> questions = new ArrayList<>();
-        
-        for (int i = 0; i < quizDto.getQuestions().size(); i++) {
-            var questionDto = quizDto.getQuestions().get(i);
+        try {
+            // Get the authenticated user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+            User creator = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
             
-            Question question = new Question();
-            question.setQuiz(savedQuiz);
-            question.setText(questionDto.getText());
-            question.setImageUrl(questionDto.getImageUrl());
-            question.setType(questionDto.getType());
-            question.setPoints(questionDto.getPoints());
-            question.setOrder(i + 1);
+            // Get the course
+            Course course = courseRepository.findById(quizDto.getCourseId())
+                .orElseThrow(() -> new IllegalArgumentException("Course not found"));
             
-            // For text answer questions
-            if (questionDto.getType() == QuestionType.TEXT_ANSWER) {
-                question.setCorrectAnswer(questionDto.getCorrectAnswer());
-            }
+            // Create and save the quiz
+            Quiz quiz = new Quiz();
+            quiz.setTitle(quizDto.getTitle());
+            quiz.setDescription(quizDto.getDescription());
+            quiz.setCourse(course);
+            quiz.setCreator(creator);
+            quiz.setStartDate(quizDto.getStartDate());
+            quiz.setEndDate(quizDto.getEndDate());
+            quiz.setDurationMinutes(quizDto.getDurationMinutes());
             
-            Question savedQuestion = questionRepository.save(question);
+            // Create questions list
+            List<Question> questions = new ArrayList<>();
             
-            // For multiple choice questions, create options
-            if (questionDto.getType() == QuestionType.MULTIPLE_CHOICE && 
-                questionDto.getOptions() != null) {
-                
-                List<QuestionOption> options = new ArrayList<>();
-                
-                for (int j = 0; j < questionDto.getOptions().size(); j++) {
-                    var optionDto = questionDto.getOptions().get(j);
+            if (quizDto.getQuestions() != null && !quizDto.getQuestions().isEmpty()) {
+                for (int i = 0; i < quizDto.getQuestions().size(); i++) {
+                    var questionDto = quizDto.getQuestions().get(i);
                     
-                    QuestionOption option = new QuestionOption();
-                    option.setQuestion(savedQuestion);
-                    option.setText(optionDto.getText());
-                    option.setCorrect(optionDto.getCorrect());
-                    option.setOrder(j + 1);
+                    Question question = new Question();
+                    question.setQuiz(quiz);
+                    question.setText(questionDto.getText());
+                    question.setImageUrl(questionDto.getImageUrl());
+                    question.setType(questionDto.getType());
+                    question.setPoints(questionDto.getPoints() != null ? questionDto.getPoints() : 1);
+                    question.setOrder(i + 1);
                     
-                    QuestionOption savedOption = questionOptionRepository.save(option);
-                    options.add(savedOption);
+                    // For text answer questions
+                    if (questionDto.getType() == QuestionType.TEXT_ANSWER) {
+                        question.setCorrectAnswer(questionDto.getCorrectAnswer());
+                    }
+                    
+                    // For multiple choice questions, create options
+                    if (questionDto.getType() == QuestionType.MULTIPLE_CHOICE && 
+                        questionDto.getOptions() != null && !questionDto.getOptions().isEmpty()) {
+                        
+                        List<QuestionOption> options = new ArrayList<>();
+                        
+                        for (int j = 0; j < questionDto.getOptions().size(); j++) {
+                            var optionDto = questionDto.getOptions().get(j);
+                            
+                            QuestionOption option = new QuestionOption();
+                            option.setQuestion(question);
+                            option.setText(optionDto.getText());
+                            option.setCorrect(optionDto.getCorrect());
+                            option.setOrder(j + 1);
+                            
+                            options.add(option);
+                        }
+                        
+                        question.setOptions(options);
+                    }
+                    
+                    questions.add(question);
                 }
-                
-                savedQuestion.setOptions(options);
             }
             
-            questions.add(savedQuestion);
+            quiz.setQuestions(questions);
+            
+            // Save the entire graph at once
+            Quiz savedQuiz = quizRepository.save(quiz);
+            
+            // To prevent circular reference issues, create a clean response without circular references
+            Quiz responseQuiz = quizRepository.findById(savedQuiz.getId())
+                .orElseThrow(() -> new IllegalArgumentException("Failed to retrieve saved quiz"));
+            
+            // Clear any circular references
+            if (responseQuiz.getQuestions() != null) {
+                responseQuiz.getQuestions().forEach(q -> q.setQuiz(null));
+            }
+            
+            return ResponseEntity.ok(
+                ApiResponse.success("Quiz created successfully", responseQuiz)
+            );
+        } catch (Exception e) {
+            // Log the exception for debugging
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                .body(ApiResponse.error("Failed to create quiz: " + e.getMessage()));
         }
-        
-        savedQuiz.setQuestions(questions);
-        
-        return ResponseEntity.ok(
-            ApiResponse.success("Quiz created successfully", savedQuiz)
-        );
     }
     
     @GetMapping
@@ -335,4 +351,4 @@ public class QuizController {
             ApiResponse.success("Quiz deleted successfully")
         );
     }
-} 
+}
