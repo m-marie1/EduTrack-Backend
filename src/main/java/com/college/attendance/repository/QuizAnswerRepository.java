@@ -13,5 +13,7 @@ import java.util.Optional;
 public interface QuizAnswerRepository extends JpaRepository<QuizAnswer, Long> {
     List<QuizAnswer> findByAttempt(QuizAttempt attempt);
     
+    List<QuizAnswer> findByAttemptId(Long attemptId);
+    
     Optional<QuizAnswer> findByAttemptAndQuestion(QuizAttempt attempt, Question question);
 } 

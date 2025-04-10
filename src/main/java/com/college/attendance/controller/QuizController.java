@@ -15,7 +15,9 @@ import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 
@@ -141,16 +143,36 @@ public class QuizController {
     @GetMapping("/available")
     public ResponseEntity<ApiResponse<List<Quiz>>> getAvailableQuizzes(
             @RequestParam Long courseId) {
-        
-        Course course = courseRepository.findById(courseId)
-            .orElseThrow(() -> new IllegalArgumentException("Course not found"));
-        
-        LocalDateTime now = LocalDateTime.now();
-        
-        List<Quiz> quizzes = quizRepository
-            .findByCourseAndStartDateBeforeAndEndDateAfter(course, now, now);
-        
-        return ResponseEntity.ok(ApiResponse.success(quizzes));
+        try {
+            Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new IllegalArgumentException("Course not found"));
+            
+            LocalDateTime now = LocalDateTime.now();
+            System.out.println("Current time: " + now);
+            
+            // First get all quizzes for the course
+            List<Quiz> allQuizzes = quizRepository.findByCourse(course);
+            System.out.println("Total quizzes for course: " + allQuizzes.size());
+            
+            // Log details about each quiz
+            for (Quiz quiz : allQuizzes) {
+                System.out.println("Quiz ID: " + quiz.getId() + 
+                                   ", Title: " + quiz.getTitle() + 
+                                   ", Start Date: " + quiz.getStartDate() + 
+                                   ", End Date: " + quiz.getEndDate());
+            }
+            
+            // Get available quizzes using the improved repository method
+            List<Quiz> availableQuizzes = quizRepository.findAvailableQuizzesByCourse(course, now);
+            
+            System.out.println("Available quizzes: " + availableQuizzes.size());
+            
+            return ResponseEntity.ok(ApiResponse.success(availableQuizzes));
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                .body(ApiResponse.error("Error retrieving available quizzes: " + e.getMessage()));
+        }
     }
     
     @GetMapping("/{quizId}")
@@ -234,7 +256,7 @@ public class QuizController {
     
     @PostMapping("/{quizId}/submit")
     @PreAuthorize("hasRole('STUDENT')")
-    public ResponseEntity<ApiResponse<QuizAttempt>> submitQuiz(
+    public ResponseEntity<?> submitQuiz(
             @PathVariable Long quizId,
             @Valid @RequestBody QuizAttemptDto attemptDto) {
         
@@ -310,19 +332,52 @@ public class QuizController {
             maxScore += question.getPoints();
         }
         
-        // Update the attempt
+        // Update the attempt WITHOUT setting the answers collection
+        // to avoid orphan deletion cascading
         attempt.setEndTime(now);
         attempt.setCompleted(true);
         attempt.setScore(score);
         attempt.setMaxScore(maxScore);
-        attempt.setAnswers(answers);
         
         QuizAttempt savedAttempt = quizAttemptRepository.save(attempt);
+        
+        // To avoid circular reference issues in the response and Hibernate orphan deletion,
+        // we'll work with a detached copy of the quiz attempt
+        QuizAttempt savedAttemptWithId = savedAttempt;
+        
+        // Create a simplified response object to avoid circular references
+        Map<String, Object> simplifiedResponse = new HashMap<>();
+        simplifiedResponse.put("id", savedAttemptWithId.getId());
+        simplifiedResponse.put("quiz", savedAttemptWithId.getQuiz() != null ? savedAttemptWithId.getQuiz().getId() : null);
+        simplifiedResponse.put("student", savedAttemptWithId.getStudent() != null ? savedAttemptWithId.getStudent().getId() : null);
+        simplifiedResponse.put("startTime", savedAttemptWithId.getStartTime());
+        simplifiedResponse.put("endTime", savedAttemptWithId.getEndTime());
+        simplifiedResponse.put("completed", savedAttemptWithId.isCompleted());
+        simplifiedResponse.put("score", savedAttemptWithId.getScore());
+        simplifiedResponse.put("maxScore", savedAttemptWithId.getMaxScore());
+        
+        // Manually load answer data to avoid Hibernate orphan issues
+        List<Map<String, Object>> simplifiedAnswers = new ArrayList<>();
+        List<QuizAnswer> answerList = quizAnswerRepository.findByAttemptId(savedAttemptWithId.getId());
+            
+        for (QuizAnswer answer : answerList) {
+            Map<String, Object> simplifiedAnswer = new HashMap<>();
+            simplifiedAnswer.put("id", answer.getId());
+            simplifiedAnswer.put("question", answer.getQuestion() != null ? answer.getQuestion().getId() : null);
+            simplifiedAnswer.put("selectedOption", answer.getSelectedOption() != null ? answer.getSelectedOption().getId() : null);
+            simplifiedAnswer.put("textAnswer", answer.getTextAnswer());
+            simplifiedAnswer.put("pointsAwarded", answer.getPointsAwarded());
+            simplifiedAnswer.put("graded", answer.isGraded());
+            
+            simplifiedAnswers.add(simplifiedAnswer);
+        }
+        
+        simplifiedResponse.put("answers", simplifiedAnswers);
         
         return ResponseEntity.ok(
             ApiResponse.success(
                 timeIsUp ? "Time's up! Quiz auto-submitted." : "Quiz submitted successfully", 
-                savedAttempt
+                simplifiedResponse
             )
         );
     }

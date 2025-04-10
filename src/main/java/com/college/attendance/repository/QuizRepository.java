@@ -19,4 +19,17 @@ public interface QuizRepository extends JpaRepository<Quiz, Long> {
     
     List<Quiz> findByCourseAndStartDateBeforeAndEndDateAfter(
         Course course, LocalDateTime now, LocalDateTime now2);
+    
+    /**
+     * Find all currently available quizzes for a course.
+     * Available quizzes are those that have started (startDate <= now)
+     * and have not ended yet (endDate > now).
+     *
+     * @param course The course to find quizzes for
+     * @param currentTime The current time
+     * @return List of available quizzes
+     */
+    default List<Quiz> findAvailableQuizzesByCourse(Course course, LocalDateTime currentTime) {
+        return findByCourseAndStartDateBeforeAndEndDateAfter(course, currentTime, currentTime);
+    }
 } 
