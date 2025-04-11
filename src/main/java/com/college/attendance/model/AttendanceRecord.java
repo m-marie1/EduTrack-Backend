@@ -32,7 +32,7 @@ public class AttendanceRecord {
     @Column(nullable = false)
     private boolean verified;
     
-    private String networkIdentifier; // e.g., wifi network name or ESP32 identifier
+    // private String networkIdentifier; // Removed
     
-    private String verificationMethod; // "WIFI", "ESP32", etc.
+    // private String verificationMethod; // Removed - verification is now code-based
 }

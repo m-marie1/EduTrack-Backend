@@ -93,8 +93,8 @@ public class AttendanceServiceTests {
         // Setup attendance record DTO
         recordDto = new AttendanceRecordDto();
         recordDto.setCourseId(1L);
-        recordDto.setNetworkIdentifier("College-WiFi");
-        recordDto.setVerificationMethod("WIFI");
+        // recordDto.setNetworkIdentifier("College-WiFi");
+        // recordDto.setVerificationMethod("WIFI");
 
         // Setup test attendance record
         testRecord = new AttendanceRecord();
@@ -103,8 +103,8 @@ public class AttendanceServiceTests {
         testRecord.setCourse(testCourse);
         testRecord.setTimestamp(LocalDateTime.now());
         testRecord.setVerified(true);
-        testRecord.setNetworkIdentifier("College-WiFi");
-        testRecord.setVerificationMethod("WIFI");
+        // testRecord.setNetworkIdentifier("College-WiFi");
+        // testRecord.setVerificationMethod("WIFI");
 
         // Setup mocks
         when(courseRepository.findById(1L)).thenReturn(Optional.of(testCourse));
@@ -133,8 +133,8 @@ public class AttendanceServiceTests {
         AttendanceRecord savedRecord = attendanceRecordCaptor.getValue();
         assertEquals(testUser, savedRecord.getUser());
         assertEquals(testCourse, savedRecord.getCourse());
-        assertEquals("College-WiFi", savedRecord.getNetworkIdentifier());
-        assertEquals("WIFI", savedRecord.getVerificationMethod());
+        // assertEquals("College-WiFi", savedRecord.getNetworkIdentifier());
+        // assertEquals("WIFI", savedRecord.getVerificationMethod());
     }
 
     @Test

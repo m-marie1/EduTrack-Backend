@@ -135,8 +135,15 @@
 		<dependency>
 			<groupId>org.flywaydb</groupId>
 			<artifactId>flyway-database-postgresql</artifactId>
-		</dependency>
-	</dependencies>
+</dependency>
+
+<!-- Apache Commons CSV for spreadsheet generation -->
+<dependency>
+			<groupId>org.apache.commons</groupId>
+			<artifactId>commons-csv</artifactId>
+			<version>1.10.0</version> <!-- Use the latest version -->
+</dependency>
+</dependencies>
 	
 
 	<build>

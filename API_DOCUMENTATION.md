@@ -132,23 +132,25 @@ Authorization: Bearer YOUR_TOKEN_HERE
       "courseCode": "CS101",
       "courseName": "Introduction to Computer Science",
       "description": "Fundamental concepts of programming",
-      "startTime": "09:00:00",
-      "endTime": "10:30:00",
-      "days": ["MONDAY", "WEDNESDAY"]
+      "startTime": "09:00:00", // Note: Schedule info is now informational only for attendance
+      "endTime": "10:30:00", // Note: Schedule info is now informational only for attendance
+      "days": ["MONDAY", "WEDNESDAY"] // Note: Schedule info is now informational only for attendance
     }
   ],
   "timestamp": "2023-03-23T12:34:56.789"
 }
 ```
 
-### Get Current Active Courses
+### Get Current Active Courses (Deprecated - Schedule No Longer Used for Attendance)
 
 ```
 GET /api/api/courses/current
 Authorization: Bearer YOUR_TOKEN_HERE
 ```
 
-**Response:** Similar to Get All Courses, but filtered to currently active courses.
+**Note:** This endpoint's logic based on current time might be misleading as schedule is no longer enforced for attendance recording. Consider removing or adjusting its purpose.
+
+**Response:** Similar to Get All Courses, but filtered based on the current day/time matching the course schedule.
 
 ### Get Enrolled Courses
 
@@ -227,7 +229,7 @@ Authorization: Bearer ADMIN_TOKEN_HERE
 }
 ```
 
-## Attendance
+## Attendance & Sessions
 
 ### Enroll in a Course
 
@@ -247,11 +249,13 @@ Authorization: Bearer YOUR_TOKEN_HERE
 }
 ```
 
-### Record Attendance
+### Create Attendance Session (Professor Only)
+
+**Requires the authenticated professor to be enrolled in the specified course.**
 
 ```
-POST /api/api/attendance/record
-Authorization: Bearer YOUR_TOKEN_HERE
+POST /api/api/attendance/sessions/create
+Authorization: Bearer PROFESSOR_TOKEN_HERE
 ```
 
 **Request Body:**
@@ -259,12 +263,58 @@ Authorization: Bearer YOUR_TOKEN_HERE
 ```json
 {
   "courseId": 1,
-  "networkIdentifier": "College-WiFi",
-  "verificationMethod": "WIFI"
+  "expiryMinutes": 5 // Duration for which the code will be valid
 }
 ```
 
-**Response:**
+**Response (Success - 201 Created):**
+
+```json
+{
+  "success": true,
+  "message": "Attendance session created successfully",
+  "data": {
+    "sessionId": 123,
+    "courseId": 1,
+    "courseCode": "CS101",
+    "courseName": "Introduction to Computer Science",
+    "verificationCode": "A8F3K9", // The generated code for students
+    "createdAt": "2023-04-11T10:30:00.123",
+    "expiresAt": "2023-04-11T10:35:00.123",
+    "active": true
+  },
+  "timestamp": "2023-04-11T10:30:00.456"
+}
+```
+
+**Response (Error - 400 Bad Request / 403 Forbidden / 404 Not Found):**
+
+```json
+{
+  "success": false,
+  "message": "Error message (e.g., Expiry time must be positive, Professor not associated with this course, Course not found)",
+  "data": null,
+  "timestamp": "2023-04-11T10:30:00.456"
+}
+```
+
+### Record Attendance (Student Only)
+
+```
+POST /api/api/attendance/record
+Authorization: Bearer STUDENT_TOKEN_HERE
+```
+
+**Request Body:**
+
+```json
+{
+  "courseId": 1,
+  "verificationCode": "A8F3K9" // Code provided by the professor for an active session
+}
+```
+
+**Response (Success - 200 OK):**
 
 ```json
 {
@@ -276,13 +326,160 @@ Authorization: Bearer YOUR_TOKEN_HERE
     "studentId": "S54321",
     "courseCode": "CS101",
     "courseName": "Introduction to Computer Science",
-    "timestamp": "2023-03-23T12:34:56.789",
-    "verified": true,
-    "verificationMethod": "WIFI"
+    "timestamp": "2023-04-11T10:32:15.987",
+    "verified": true // Indicates the code was valid
+    // verificationMethod removed
   },
-  "timestamp": "2023-03-23T12:34:56.789"
+  "timestamp": "2023-04-11T10:32:15.999"
 }
 ```
+
+**Response (Error - 400 Bad Request):**
+
+```json
+{
+  "success": false,
+  "message": "Error message (e.g., User is not enrolled in this course, Attendance already recorded for this course today, Invalid or expired verification code for this course.)",
+  "data": null,
+  "timestamp": "2023-04-11T10:32:15.999"
+}
+```
+
+### Get Active Sessions for Professor (Professor Only)
+
+```
+GET /api/api/attendance/sessions/active
+Authorization: Bearer PROFESSOR_TOKEN_HERE
+```
+
+**Response (Success - 200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Active sessions retrieved successfully",
+  "data": [
+    {
+      "sessionId": 123,
+      "courseId": 1,
+      "courseCode": "CS101",
+      "courseName": "Introduction to Computer Science",
+      "verificationCode": "A8F3K9",
+      "createdAt": "2023-04-11T10:30:00.123",
+      "expiresAt": "2023-04-11T10:35:00.123",
+      "active": true
+    }
+    // ... other active sessions for this professor
+  ],
+  "timestamp": "2023-04-11T10:40:00.111"
+}
+```
+
+### Get Session Attendees (Professor Only)
+
+```
+GET /api/api/attendance/sessions/{sessionId}/attendees
+Authorization: Bearer PROFESSOR_TOKEN_HERE
+```
+
+**Response (Success - 200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Session attendees retrieved successfully",
+  "data": [
+    {
+      "id": 10,
+      "username": "john.doe",
+      "fullName": "John Doe",
+      "email": "john.doe@example.com",
+      "studentId": "S54321",
+      "role": "STUDENT"
+    },
+    {
+      "id": 15,
+      "username": "jane.smith",
+      "fullName": "Jane Smith",
+      "email": "jane.smith@example.com",
+      "studentId": "S67890",
+      "role": "STUDENT"
+    }
+    // ... other students who attended using the code during the session timeframe
+  ],
+  "timestamp": "2023-04-11T10:45:00.222"
+}
+```
+
+**Response (Error - 403 Forbidden / 404 Not Found):**
+
+```json
+{
+  "success": false,
+  "message": "Error message (e.g., Professor does not have permission to view attendees for this session, Attendance session not found with ID: 123)",
+  "data": null,
+  "timestamp": "2023-04-11T10:45:00.222"
+}
+```
+
+### Get Daily Attendees for Course (Professor Only)
+
+```
+GET /api/api/attendance/course/{courseId}/date/{date}/attendees
+Authorization: Bearer PROFESSOR_TOKEN_HERE
+```
+
+- `{date}` should be in `YYYY-MM-DD` format.
+
+**Response (Success - 200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Attendees retrieved successfully",
+  "data": [
+    {
+      "id": 10,
+      "username": "john.doe",
+      "fullName": "John Doe",
+      "email": "john.doe@example.com",
+      "studentId": "S54321",
+      "role": "STUDENT"
+    }
+    // ... other students with verified attendance for this course on this date
+  ],
+  "timestamp": "2023-04-11T11:00:00.333"
+}
+```
+
+### Download Course Attendance Spreadsheet (Professor Only)
+
+```
+GET /api/api/attendance/course/{courseId}/spreadsheet
+Authorization: Bearer PROFESSOR_TOKEN_HERE
+Accept: text/plain
+```
+
+**Response (Success - 200 OK):**
+
+- **Content-Type:** `text/plain`
+- **Content-Disposition:** `attachment; filename="attendance-course-1-2023-04-11.csv"`
+- **Body:** Raw CSV data as text:
+  ```csv
+  Student Name,Student ID,Date,Time,Verified
+  John Doe,S54321,2023-04-10,09:05:12,Yes
+  Jane Smith,S67890,2023-04-10,09:06:30,Yes
+  John Doe,S54321,2023-04-11,10:32:15,Yes
+  ...
+  ```
+
+**Response (No Content - 204 No Content):**
+
+- Returned if no attendance records exist for the course.
+
+**Response (Error - 404 Not Found):**
+
+- Returned if the course ID does not exist.
 
 ### Get User Attendance for Course
 
@@ -291,7 +488,7 @@ GET /api/api/attendance/user/{userId}/course/{courseId}
 Authorization: Bearer YOUR_TOKEN_HERE
 ```
 
-**Response:**
+**Response:** (Structure remains the same, but `verificationMethod` is removed)
 
 ```json
 {
@@ -304,9 +501,8 @@ Authorization: Bearer YOUR_TOKEN_HERE
       "studentId": "S54321",
       "courseCode": "CS101",
       "courseName": "Introduction to Computer Science",
-      "timestamp": "2023-03-23T09:15:00",
-      "verified": true,
-      "verificationMethod": "WIFI"
+      "timestamp": "2023-04-11T10:32:15.987",
+      "verified": true
     }
   ],
   "timestamp": "2023-03-23T12:34:56.789"
@@ -353,331 +549,334 @@ POST /api/api/professor-requests
 }
 ```
 
-
 ## Quizzes
- 
- ### Create Quiz (Professor Only)
- 
- ```
- POST /api/quizzes
- Authorization: Bearer PROFESSOR_TOKEN_HERE
- ```
- 
- **Request Body:**
- 
- ```json
- {
-   "title": "Midterm Exam",
-   "description": "Covers chapters 1-5",
-   "courseId": 1,
-   "startDate": "2023-04-01T09:00:00",
-   "endDate": "2023-04-01T23:59:59",
-   "durationMinutes": 60,
-   "questions": [
-     {
-       "text": "What is the capital of France?",
-       "type": "MULTIPLE_CHOICE",
-       "points": 2,
-       "options": [
-         {
-           "text": "London",
-           "correct": false
-         },
-         {
-           "text": "Paris",
-           "correct": true
-         },
-         {
-           "text": "Rome",
-           "correct": false
-         }
-       ]
-     },
-     {
-       "text": "Define polymorphism",
-       "type": "TEXT_ANSWER",
-       "points": 5,
-       "correctAnswer": "Polymorphism is the ability of an object to take many forms"
-     }
-   ]
- }
- ```
- 
- **Response:**
- 
- ```json
- {
-   "success": true,
-   "message": "Quiz created successfully",
-   "data": {
-     "id": 1,
-     "title": "Midterm Exam",
-     "description": "Covers chapters 1-5",
-     "startDate": "2023-04-01T09:00:00",
-     "endDate": "2023-04-01T23:59:59",
-     "durationMinutes": 60,
-     "questions": [...]
-   },
-   "timestamp": "2023-03-23T12:34:56.789"
- }
- ```
- 
- ### Get Available Quizzes
- 
- ```
- GET /api/quizzes/available?courseId=1
- Authorization: Bearer YOUR_TOKEN_HERE
- ```
- 
- **Response:**
- 
- ```json
- {
-   "success": true,
-   "message": "Operation successful",
-   "data": [
-     {
-       "id": 1,
-       "title": "Midterm Exam",
-       "description": "Covers chapters 1-5",
-       "startDate": "2023-04-01T09:00:00",
-       "endDate": "2023-04-01T23:59:59",
-       "durationMinutes": 60
-     },
-     ...
-   ],
-   "timestamp": "2023-03-23T12:34:56.789"
- }
- ```
- 
- ### Start Quiz (Student Only)
- 
- ```
- POST /api/quizzes/{quizId}/start
- Authorization: Bearer STUDENT_TOKEN_HERE
- ```
- 
- **Response:**
- 
- ```json
- {
-   "success": true,
-   "message": "Quiz started successfully",
-   "data": {
-     "id": 1,
-     "quiz": {...},
-     "student": {...},
-     "startTime": "2023-04-01T10:15:30",
-     "completed": false
-   },
-   "timestamp": "2023-03-23T12:34:56.789"
- }
- ```
- 
- ### Submit Quiz (Student Only)
- 
- ```
- POST /api/quizzes/{quizId}/submit
- Authorization: Bearer STUDENT_TOKEN_HERE
- ```
- 
- **Request Body:**
- 
- ```json
- {
-   "quizId": 1,
-   "answers": [
-     {
-       "questionId": 1,
-       "selectedOptionId": 2
-     },
-     {
-       "questionId": 2,
-       "textAnswer": "Polymorphism is the ability of an object to take many forms"
-     }
-   ]
- }
- ```
- 
- **Response:**
- 
- ```json
- {
-   "success": true,
-   "message": "Quiz submitted successfully",
-   "data": {
-     "id": 1,
-     "quiz": {...},
-     "student": {...},
-     "startTime": "2023-04-01T10:15:30",
-     "endTime": "2023-04-01T11:10:45",
-     "completed": true,
-     "score": 7,
-     "maxScore": 7
-   },
-   "timestamp": "2023-03-23T12:34:56.789"
- }
- ```
- 
- ## Assignments
- 
- ### Create Assignment (Professor Only)
- 
- ```
- POST /api/assignments
- Authorization: Bearer PROFESSOR_TOKEN_HERE
- ```
- 
- **Request Body:**
- 
- ```json
- {
-   "title": "Final Project",
-   "description": "Implement a web application using Spring Boot",
-   "courseId": 1,
-   "dueDate": "2023-05-15T23:59:59",
-   "maxPoints": 100,
-   "files": [
-     {
-       "fileName": "project_requirements.pdf",
-       "fileUrl": "/uploads/project_requirements.pdf",
-       "contentType": "application/pdf",
-       "fileSize": 245789
-     }
-   ]
- }
- ```
- 
- **Response:**
- 
- ```json
- {
-   "success": true,
-   "message": "Assignment created successfully",
-   "data": {
-     "id": 1,
-     "title": "Final Project",
-     "description": "Implement a web application using Spring Boot",
-     "course": {...},
-     "creator": {...},
-     "dueDate": "2023-05-15T23:59:59",
-     "createdAt": "2023-03-23T12:34:56.789",
-     "maxPoints": 100,
-     "files": [...]
-   },
-   "timestamp": "2023-03-23T12:34:56.789"
- }
- ```
- 
- ### Get Active Assignments
- 
- ```
- GET /api/assignments/active?courseId=1
- Authorization: Bearer YOUR_TOKEN_HERE
- ```
- 
- **Response:**
- 
- ```json
- {
-   "success": true,
-   "message": "Operation successful",
-   "data": [
-     {
-       "id": 1,
-       "title": "Final Project",
-       "description": "Implement a web application using Spring Boot",
-       "dueDate": "2023-05-15T23:59:59",
-       "maxPoints": 100
-     },
-     ...
-   ],
-   "timestamp": "2023-03-23T12:34:56.789"
- }
- ```
- 
- ### Submit Assignment (Student Only)
- 
- ```
- POST /api/assignments/{assignmentId}/submit
- Authorization: Bearer STUDENT_TOKEN_HERE
- ```
- 
- **Request Body:**
- 
- ```json
- {
-   "assignmentId": 1,
-   "notes": "My final project submission",
-   "files": [
-     {
-       "fileName": "FinalProject.zip",
-       "fileUrl": "/uploads/FinalProject.zip",
-       "contentType": "application/zip",
-       "fileSize": 3456789
-     }
-   ]
- }
- ```
- 
- **Response:**
- 
- ```json
- {
-   "success": true,
-   "message": "Assignment submitted successfully",
-   "data": {
-     "id": 1,
-     "assignment": {...},
-     "student": {...},
-     "notes": "My final project submission",
-     "submissionDate": "2023-05-14T20:45:12",
-     "graded": false,
-     "late": false,
-     "files": [...]
-   },
-   "timestamp": "2023-03-23T12:34:56.789"
- }
- ```
- 
- ### Grade Assignment Submission (Professor Only)
- 
- ```
- POST /api/assignments/submissions/{submissionId}/grade
- Authorization: Bearer PROFESSOR_TOKEN_HERE
- ```
- 
- **Request Body:**
- 
- ```json
- {
-   "score": 85,
-   "feedback": "Good work, but missing proper documentation"
- }
- ```
- 
- **Response:**
- 
- ```json
- {
-   "success": true,
-   "message": "Submission graded successfully",
-   "data": {
-     "id": 1,
-     "assignment": {...},
-     "student": {...},
-     "notes": "My final project submission",
-     "submissionDate": "2023-05-14T20:45:12",
-     "gradedDate": "2023-05-16T14:30:45",
-     "score": 85,
-     "feedback": "Good work, but missing proper documentation",
-     "graded": true,
-     "late": false,
-     "files": [...]
-   },
-   "timestamp": "2023-03-23T12:34:56.789"
- }
- ```
+
+_(Quiz endpoints remain unchanged)_
+
+### Create Quiz (Professor Only)
+
+```
+POST /api/quizzes
+Authorization: Bearer PROFESSOR_TOKEN_HERE
+```
+
+**Request Body:**
+
+```json
+{
+  "title": "Midterm Exam",
+  "description": "Covers chapters 1-5",
+  "courseId": 1,
+  "startDate": "2023-04-01T09:00:00",
+  "endDate": "2023-04-01T23:59:59",
+  "durationMinutes": 60,
+  "questions": [
+    {
+      "text": "What is the capital of France?",
+      "type": "MULTIPLE_CHOICE",
+      "points": 2,
+      "options": [
+        {
+          "text": "London",
+          "correct": false
+        },
+        {
+          "text": "Paris",
+          "correct": true
+        },
+        {
+          "text": "Rome",
+          "correct": false
+        }
+      ]
+    },
+    {
+      "text": "Define polymorphism",
+      "type": "TEXT_ANSWER",
+      "points": 5,
+      "correctAnswer": "Polymorphism is the ability of an object to take many forms"
+    }
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Quiz created successfully",
+  "data": {
+    "id": 1,
+    "title": "Midterm Exam",
+    "description": "Covers chapters 1-5",
+    "startDate": "2023-04-01T09:00:00",
+    "endDate": "2023-04-01T23:59:59",
+    "durationMinutes": 60,
+    "questions": [...]
+  },
+  "timestamp": "2023-03-23T12:34:56.789"
+}
+```
+
+### Get Available Quizzes
+
+```
+GET /api/quizzes/available?courseId=1
+Authorization: Bearer YOUR_TOKEN_HERE
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Operation successful",
+  "data": [
+    {
+      "id": 1,
+      "title": "Midterm Exam",
+      "description": "Covers chapters 1-5",
+      "startDate": "2023-04-01T09:00:00",
+      "endDate": "2023-04-01T23:59:59",
+      "durationMinutes": 60
+    },
+    ...
+  ],
+  "timestamp": "2023-03-23T12:34:56.789"
+}
+```
+
+### Start Quiz (Student Only)
+
+```
+POST /api/quizzes/{quizId}/start
+Authorization: Bearer STUDENT_TOKEN_HERE
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Quiz started successfully",
+  "data": {
+    "id": 1,
+    "quiz": {...},
+    "student": {...},
+    "startTime": "2023-04-01T10:15:30",
+    "completed": false
+  },
+  "timestamp": "2023-03-23T12:34:56.789"
+}
+```
+
+### Submit Quiz (Student Only)
+
+```
+POST /api/quizzes/{quizId}/submit
+Authorization: Bearer STUDENT_TOKEN_HERE
+```
+
+**Request Body:**
+
+```json
+{
+  "quizId": 1,
+  "answers": [
+    {
+      "questionId": 1,
+      "selectedOptionId": 2
+    },
+    {
+      "questionId": 2,
+      "textAnswer": "Polymorphism is the ability of an object to take many forms"
+    }
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Quiz submitted successfully",
+  "data": {
+    "id": 1,
+    "quiz": {...},
+    "student": {...},
+    "startTime": "2023-04-01T10:15:30",
+    "endTime": "2023-04-01T11:10:45",
+    "completed": true,
+    "score": 7,
+    "maxScore": 7
+  },
+  "timestamp": "2023-03-23T12:34:56.789"
+}
+```
+
+## Assignments
+
+_(Assignment endpoints remain unchanged)_
+
+### Create Assignment (Professor Only)
+
+```
+POST /api/assignments
+Authorization: Bearer PROFESSOR_TOKEN_HERE
+```
+
+**Request Body:**
+
+```json
+{
+  "title": "Final Project",
+  "description": "Implement a web application using Spring Boot",
+  "courseId": 1,
+  "dueDate": "2023-05-15T23:59:59",
+  "maxPoints": 100,
+  "files": [
+    {
+      "fileName": "project_requirements.pdf",
+      "fileUrl": "/uploads/project_requirements.pdf",
+      "contentType": "application/pdf",
+      "fileSize": 245789
+    }
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Assignment created successfully",
+  "data": {
+    "id": 1,
+    "title": "Final Project",
+    "description": "Implement a web application using Spring Boot",
+    "course": {...},
+    "creator": {...},
+    "dueDate": "2023-05-15T23:59:59",
+    "createdAt": "2023-03-23T12:34:56.789",
+    "maxPoints": 100,
+    "files": [...]
+  },
+  "timestamp": "2023-03-23T12:34:56.789"
+}
+```
+
+### Get Active Assignments
+
+```
+GET /api/assignments/active?courseId=1
+Authorization: Bearer YOUR_TOKEN_HERE
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Operation successful",
+  "data": [
+    {
+      "id": 1,
+      "title": "Final Project",
+      "description": "Implement a web application using Spring Boot",
+      "dueDate": "2023-05-15T23:59:59",
+      "maxPoints": 100
+    },
+    ...
+  ],
+  "timestamp": "2023-03-23T12:34:56.789"
+}
+```
+
+### Submit Assignment (Student Only)
+
+```
+POST /api/assignments/{assignmentId}/submit
+Authorization: Bearer STUDENT_TOKEN_HERE
+```
+
+**Request Body:**
+
+```json
+{
+  "assignmentId": 1,
+  "notes": "My final project submission",
+  "files": [
+    {
+      "fileName": "FinalProject.zip",
+      "fileUrl": "/uploads/FinalProject.zip",
+      "contentType": "application/zip",
+      "fileSize": 3456789
+    }
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Assignment submitted successfully",
+  "data": {
+    "id": 1,
+    "assignment": {...},
+    "student": {...},
+    "notes": "My final project submission",
+    "submissionDate": "2023-05-14T20:45:12",
+    "graded": false,
+    "late": false,
+    "files": [...]
+  },
+  "timestamp": "2023-03-23T12:34:56.789"
+}
+```
+
+### Grade Assignment Submission (Professor Only)
+
+```
+POST /api/assignments/submissions/{submissionId}/grade
+Authorization: Bearer PROFESSOR_TOKEN_HERE
+```
+
+**Request Body:**
+
+```json
+{
+  "score": 85,
+  "feedback": "Good work, but missing proper documentation"
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Submission graded successfully",
+  "data": {
+    "id": 1,
+    "assignment": {...},
+    "student": {...},
+    "notes": "My final project submission",
+    "submissionDate": "2023-05-14T20:45:12",
+    "gradedDate": "2023-05-16T14:30:45",
+    "score": 85,
+    "feedback": "Good work, but missing proper documentation",
+    "graded": true,
+    "late": false,
+    "files": [...]
+  },
+  "timestamp": "2023-03-23T12:34:56.789"
+}
+```
 
 ### Upload ID Image for Professor Request (No Authentication Required)
 
@@ -799,15 +998,19 @@ The system supports three types of users, each with different permissions:
 - Created when an admin approves a professor request
 - Permissions:
   - Create quizzes and assignments
+  - Create and manage attendance sessions for their courses
+  - View attendees for their sessions/courses
+  - Download attendance spreadsheets for their courses
   - Access professor-specific endpoints
-  - View enrolled students and record attendance
+  - View enrolled students
+  - Creating an attendance session implicitly records that the class took place.
 
 ### Student
 
 - Default role for registered users
 - Permissions:
   - Enroll in courses
-  - Record attendance
+  - Record attendance using verification codes
   - View available courses and attendance history
 
 ## File Upload

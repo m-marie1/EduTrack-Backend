@@ -22,4 +22,9 @@ public interface AttendanceRepository extends JpaRepository<AttendanceRecord, Lo
     
     Optional<AttendanceRecord> findByUserAndCourseAndTimestampBetween(
         User user, Course course, LocalDateTime start, LocalDateTime end);
+
+    List<AttendanceRecord> findByCourseAndTimestampBetweenAndVerifiedTrue(
+            Course course, LocalDateTime start, LocalDateTime end);
+
+    List<AttendanceRecord> findByCourse(Course course);
 }

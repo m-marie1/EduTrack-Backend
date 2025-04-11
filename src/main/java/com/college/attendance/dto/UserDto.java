@@ -15,6 +15,7 @@ public class UserDto {
     private String fullName;
     private String email;
     private String studentId;
+    private String role; // Added for displaying user role
     
     public static UserDto fromEntity(User user) {
         UserDto dto = new UserDto();

@@ -14,7 +14,10 @@ public class AttendanceRecordDto {
     @NotNull
     private Long courseId;
     
-    private String networkIdentifier;
+    // private String networkIdentifier; // Removed
     
-    private String verificationMethod;
+    // private String verificationMethod; // Removed
+
+    @NotNull
+    private String verificationCode; // Added for code-based verification
 }
