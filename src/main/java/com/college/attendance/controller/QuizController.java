@@ -5,6 +5,10 @@ import com.college.attendance.dto.QuizDto;
 import com.college.attendance.model.*;
 import com.college.attendance.repository.*;
 import lombok.RequiredArgsConstructor;
+import org.springframework.core.io.ByteArrayResource;
+import org.springframework.core.io.Resource;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
@@ -513,6 +517,67 @@ public class QuizController {
         submissionDetails.put("answers", answers);
         
         return ResponseEntity.ok(ApiResponse.success(submissionDetails));
+    }
+    
+    @GetMapping("/my-quizzes")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<ApiResponse<List<Quiz>>> getMyQuizzes() {
+        // Get the authenticated user
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User professor = userRepository.findByUsername(username)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        List<Quiz> quizzes = quizRepository.findByCreator(professor);
+        return ResponseEntity.ok(ApiResponse.success(quizzes));
+    }
+
+    @GetMapping("/{quizId}/submissions/download")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<Resource> downloadSubmissions(@PathVariable Long quizId) {
+        Quiz quiz = quizRepository.findById(quizId)
+            .orElseThrow(() -> new IllegalArgumentException("Quiz not found"));
+        
+        // Get the authenticated user
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User professor = userRepository.findByUsername(username)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        // Check if user is the creator
+        if (!quiz.getCreator().getId().equals(professor.getId())) {
+            throw new IllegalArgumentException("You can only download submissions for quizzes you created");
+        }
+        
+        List<QuizAttempt> attempts = quizAttemptRepository.findByQuizAndCompleted(quiz, true);
+        
+        // Create CSV content
+        StringBuilder csvContent = new StringBuilder();
+        csvContent.append("Student ID,Student Name,Email,Submission Date,Score,Max Score,Percentage\n");
+        
+        for (QuizAttempt attempt : attempts) {
+            User student = attempt.getStudent();
+            csvContent.append(String.format("%s,%s,%s,%s,%d,%d,%.2f%%\n",
+                student.getStudentId(),
+                student.getFullName().replace(",", ";"), // Escape commas in names
+                student.getEmail(),
+                attempt.getEndTime(),
+                attempt.getScore(),
+                attempt.getMaxScore(),
+                (attempt.getScore() * 100.0 / attempt.getMaxScore())
+            ));
+        }
+        
+        byte[] csvBytes = csvContent.toString().getBytes();
+        ByteArrayResource resource = new ByteArrayResource(csvBytes);
+        
+        String filename = quiz.getTitle().replaceAll("[^a-zA-Z0-9]", "_") + "_submissions.csv";
+        
+        return ResponseEntity.ok()
+            .header(HttpHeaders.CONTENT_DISPOSITION, "attachment; filename=" + filename)
+            .contentType(MediaType.parseMediaType("text/csv"))
+            .contentLength(csvBytes.length)
+            .body(resource);
     }
     
     private Map<String, Object> mapStudentInfo(User student) {

@@ -810,6 +810,59 @@ Authorization: Bearer PROFESSOR_TOKEN_HERE
 - 400 Bad Request: If quiz hasn't ended yet or professor doesn't own the quiz
 - 404 Not Found: If quiz or submission not found
 
+### Get Professor's Quizzes
+
+```
+GET /api/quizzes/my-quizzes
+Authorization: Bearer PROFESSOR_TOKEN_HERE
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": null,
+  "data": [
+    {
+      "id": 1,
+      "title": "Midterm Quiz",
+      "description": "Chapter 1-5 material",
+      "startDate": "2023-04-15T10:00:00",
+      "endDate": "2023-04-15T12:00:00",
+      "durationMinutes": 120,
+      "courseId": 1,
+      "creatorId": 2
+    }
+  ],
+  "timestamp": "2023-04-15T12:00:00"
+}
+```
+
+### Download Quiz Submissions
+
+```
+GET /api/quizzes/{quizId}/submissions/download
+Authorization: Bearer PROFESSOR_TOKEN_HERE
+```
+
+Downloads a CSV file containing all submissions for the quiz. File includes:
+
+- Student ID
+- Student Name
+- Email
+- Submission Date
+- Score
+- Max Score
+- Percentage
+
+Response is a CSV file download.
+
+**Error Responses:**
+
+- 400 Bad Request: If professor doesn't own the quiz
+- 404 Not Found: If quiz not found
+
 ## Assignments
 
 _(Assignment endpoints remain unchanged)_
