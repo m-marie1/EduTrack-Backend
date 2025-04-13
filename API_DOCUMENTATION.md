@@ -716,6 +716,100 @@ Authorization: Bearer STUDENT_TOKEN_HERE
 }
 ```
 
+### Get Quiz Submissions (Professor Only)
+
+```
+GET /api/quizzes/{quizId}/submissions
+Authorization: Bearer PROFESSOR_TOKEN_HERE
+```
+
+**Note:** This endpoint is only accessible after the quiz end time has passed.
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Operation successful",
+  "data": [
+    {
+      "id": 1,
+      "studentId": 123,
+      "studentName": "John Doe",
+      "startTime": "2023-04-01T10:15:30",
+      "endTime": "2023-04-01T11:10:45",
+      "score": 85,
+      "maxScore": 100
+    }
+  ],
+  "timestamp": "2023-04-01T12:00:00"
+}
+```
+
+### Get Submission Details (Professor Only)
+
+```
+GET /api/quizzes/{quizId}/submissions/{submissionId}
+Authorization: Bearer PROFESSOR_TOKEN_HERE
+```
+
+**Note:** This endpoint is only accessible after the quiz end time has passed.
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Operation successful",
+  "data": {
+    "id": 1,
+    "student": {
+      "id": 123,
+      "fullName": "John Doe",
+      "email": "john.doe@example.com"
+    },
+    "startTime": "2023-04-01T10:15:30",
+    "endTime": "2023-04-01T11:10:45",
+    "score": 85,
+    "maxScore": 100,
+    "answers": [
+      {
+        "questionId": 1,
+        "questionText": "What is the capital of France?",
+        "questionType": "MULTIPLE_CHOICE",
+        "points": 2,
+        "pointsAwarded": 2,
+        "selectedOption": {
+          "id": 2,
+          "text": "Paris",
+          "correct": true
+        },
+        "correctOption": {
+          "id": 2,
+          "text": "Paris",
+          "correct": true
+        }
+      },
+      {
+        "questionId": 2,
+        "questionText": "Define polymorphism",
+        "questionType": "TEXT_ANSWER",
+        "points": 5,
+        "pointsAwarded": 5,
+        "studentAnswer": "Polymorphism is the ability of an object to take many forms",
+        "correctAnswer": "Polymorphism is the ability of an object to take many forms"
+      }
+    ]
+  },
+  "timestamp": "2023-04-01T12:00:00"
+}
+```
+
+**Error Responses:**
+
+- 400 Bad Request: If quiz hasn't ended yet or professor doesn't own the quiz
+- 404 Not Found: If quiz or submission not found
+
 ## Assignments
 
 _(Assignment endpoints remain unchanged)_

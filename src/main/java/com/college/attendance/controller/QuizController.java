@@ -14,7 +14,6 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -405,5 +404,130 @@ public class QuizController {
         return ResponseEntity.ok(
             ApiResponse.success("Quiz deleted successfully")
         );
+    }
+    
+    @GetMapping("/{quizId}/submissions")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<ApiResponse<List<Map<String, Object>>>> getQuizSubmissions(@PathVariable Long quizId) {
+        Quiz quiz = quizRepository.findById(quizId)
+            .orElseThrow(() -> new IllegalArgumentException("Quiz not found"));
+        
+        // Get the authenticated user
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User professor = userRepository.findByUsername(username)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        // Check if user is the creator
+        if (!quiz.getCreator().getId().equals(professor.getId())) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("You can only view submissions for quizzes you created"));
+        }
+        
+        List<QuizAttempt> attempts = quizAttemptRepository.findByQuizAndCompleted(quiz, true);
+        List<Map<String, Object>> submissions = new ArrayList<>();
+        
+        for (QuizAttempt attempt : attempts) {
+            Map<String, Object> submission = new HashMap<>();
+            submission.put("id", attempt.getId());
+            submission.put("studentId", attempt.getStudent().getId());
+            submission.put("studentName", attempt.getStudent().getFullName());
+            submission.put("startTime", attempt.getStartTime());
+            submission.put("endTime", attempt.getEndTime());
+            submission.put("score", attempt.getScore());
+            submission.put("maxScore", attempt.getMaxScore());
+            submissions.add(submission);
+        }
+        
+        return ResponseEntity.ok(ApiResponse.success(submissions));
+    }
+    
+    @GetMapping("/{quizId}/submissions/{submissionId}")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getSubmissionDetails(
+            @PathVariable Long quizId,
+            @PathVariable Long submissionId) {
+        
+        Quiz quiz = quizRepository.findById(quizId)
+            .orElseThrow(() -> new IllegalArgumentException("Quiz not found"));
+        
+        // Get the authenticated user
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User professor = userRepository.findByUsername(username)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        // Check if user is the creator
+        if (!quiz.getCreator().getId().equals(professor.getId())) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("You can only view submissions for quizzes you created"));
+        }
+        
+        QuizAttempt attempt = quizAttemptRepository.findById(submissionId)
+            .orElseThrow(() -> new IllegalArgumentException("Submission not found"));
+        
+        // Verify this submission belongs to the specified quiz
+        if (!attempt.getQuiz().getId().equals(quizId)) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Submission does not belong to this quiz"));
+        }
+        
+        Map<String, Object> submissionDetails = new HashMap<>();
+        submissionDetails.put("id", attempt.getId());
+        submissionDetails.put("student", mapStudentInfo(attempt.getStudent()));
+        submissionDetails.put("startTime", attempt.getStartTime());
+        submissionDetails.put("endTime", attempt.getEndTime());
+        submissionDetails.put("score", attempt.getScore());
+        submissionDetails.put("maxScore", attempt.getMaxScore());
+        
+        // Get detailed answers
+        List<Map<String, Object>> answers = new ArrayList<>();
+        List<QuizAnswer> quizAnswers = quizAnswerRepository.findByAttempt(attempt);
+        
+        for (QuizAnswer answer : quizAnswers) {
+            Map<String, Object> answerDetails = new HashMap<>();
+            Question question = answer.getQuestion();
+            
+            answerDetails.put("questionId", question.getId());
+            answerDetails.put("questionText", question.getText());
+            answerDetails.put("questionType", question.getType());
+            answerDetails.put("points", question.getPoints());
+            answerDetails.put("pointsAwarded", answer.getPointsAwarded());
+            
+            if (question.getType() == QuestionType.MULTIPLE_CHOICE) {
+                answerDetails.put("selectedOption", answer.getSelectedOption() != null ?
+                    mapOption(answer.getSelectedOption()) : null);
+                answerDetails.put("correctOption", question.getOptions().stream()
+                    .filter(QuestionOption::isCorrect)
+                    .findFirst()
+                    .map(this::mapOption)
+                    .orElse(null));
+            } else if (question.getType() == QuestionType.TEXT_ANSWER) {
+                answerDetails.put("studentAnswer", answer.getTextAnswer());
+                answerDetails.put("correctAnswer", question.getCorrectAnswer());
+            }
+            
+            answers.add(answerDetails);
+        }
+        
+        submissionDetails.put("answers", answers);
+        
+        return ResponseEntity.ok(ApiResponse.success(submissionDetails));
+    }
+    
+    private Map<String, Object> mapStudentInfo(User student) {
+        Map<String, Object> info = new HashMap<>();
+        info.put("id", student.getId());
+        info.put("fullName", student.getFullName());
+        info.put("email", student.getEmail());
+        return info;
+    }
+    
+    private Map<String, Object> mapOption(QuestionOption option) {
+        Map<String, Object> mapped = new HashMap<>();
+        mapped.put("id", option.getId());
+        mapped.put("text", option.getText());
+        mapped.put("correct", option.isCorrect());
+        return mapped;
     }
 }
