@@ -723,8 +723,6 @@ GET /api/quizzes/{quizId}/submissions
 Authorization: Bearer PROFESSOR_TOKEN_HERE
 ```
 
-**Note:** This endpoint is only accessible after the quiz end time has passed.
-
 **Response:**
 
 ```json
@@ -752,8 +750,6 @@ Authorization: Bearer PROFESSOR_TOKEN_HERE
 GET /api/quizzes/{quizId}/submissions/{submissionId}
 Authorization: Bearer PROFESSOR_TOKEN_HERE
 ```
-
-**Note:** This endpoint is only accessible after the quiz end time has passed.
 
 **Response:**
 
@@ -1093,7 +1089,9 @@ Authorization: Bearer ADMIN_TOKEN_HERE
 
 ```json
 {
-  "approved": true
+  "approved": true,
+  "rejectionReason": null,
+  "reviewedBy": "admin_edutrack"
 }
 ```
 
@@ -1102,7 +1100,8 @@ or
 ```json
 {
   "approved": false,
-  "rejectionReason": "Insufficient credentials"
+  "rejectionReason": "Insufficient credentials",
+  "reviewedBy": "admin_edutrack"
 }
 ```
 
