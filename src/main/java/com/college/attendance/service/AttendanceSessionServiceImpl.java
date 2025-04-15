@@ -147,19 +147,25 @@ public class AttendanceSessionServiceImpl implements AttendanceSessionService {
     }
 
     @Override
-    public int getClassDaysCount(User professor, Long courseId) {
+    public int getClassDaysCount(User user, Long courseId) {
         Course course = courseRepository.findById(courseId)
                 .orElseThrow(() -> new ResourceNotFoundException("Course not found with ID: " + courseId));
-        LocalDateTime resetTime = courseAttendanceResetRepository
-                .findByProfessorAndCourse(professor, course)
+        
+        // Find the most recent reset timestamp by any professor for this course
+        LocalDateTime resetTime = courseAttendanceResetRepository.findByCourse(course)
+                .stream()
                 .map(CourseAttendanceReset::getResetTimestamp)
+                .max(LocalDateTime::compareTo)
                 .orElse(LocalDateTime.MIN);
+
+        // Count all sessions for this course after the last reset
         List<AttendanceSession> sessions = attendanceSessionRepository
                 .findAll().stream()
-                .filter(s -> s.getProfessor().getId().equals(professor.getId()) &&
-                             s.getCourse().getId().equals(courseId) &&
-                             s.getCreatedAt().isAfter(resetTime))
+                .filter(s -> s.getCourse().getId().equals(courseId) &&
+                            s.getCreatedAt().isAfter(resetTime))
                 .toList();
+
+        // Count unique days
         HashSet<LocalDate> uniqueDays = new HashSet<>();
         for (AttendanceSession session : sessions) {
             uniqueDays.add(session.getCreatedAt().toLocalDate());

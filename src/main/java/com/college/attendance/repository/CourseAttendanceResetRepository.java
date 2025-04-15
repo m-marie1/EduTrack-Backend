@@ -7,8 +7,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
+import java.util.List;
 
 @Repository
 public interface CourseAttendanceResetRepository extends JpaRepository<CourseAttendanceReset, Long> {
     Optional<CourseAttendanceReset> findByProfessorAndCourse(User professor, Course course);
+    List<CourseAttendanceReset> findByCourse(Course course);
 }
