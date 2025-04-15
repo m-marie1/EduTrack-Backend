@@ -22,6 +22,7 @@ import java.nio.charset.StandardCharsets; // Added import
 import java.time.LocalDate;
 import java.time.format.DateTimeFormatter; // Added import
 import java.time.LocalDateTime;
+import java.time.ZoneId; // Added import
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
@@ -232,7 +233,7 @@ public class AttendanceServiceImpl implements AttendanceService {
         // Use Apache Commons CSV
         String[] headers = {"Student Name", "Student ID", "Date", "Time", "Verified"};
         DateTimeFormatter dateFormatter = DateTimeFormatter.ISO_LOCAL_DATE;
-        DateTimeFormatter timeFormatter = DateTimeFormatter.ISO_LOCAL_TIME;
+        DateTimeFormatter timeFormatter = DateTimeFormatter.ofPattern("HH:mm").withZone(ZoneId.of("Africa/Cairo"));
 
         ByteArrayOutputStream out = new ByteArrayOutputStream();
         // Ensure UTF-8 encoding for broader compatibility
@@ -240,11 +241,13 @@ public class AttendanceServiceImpl implements AttendanceService {
              CSVPrinter csvPrinter = new CSVPrinter(writer, CSVFormat.DEFAULT.withHeader(headers))) {
 
             for (AttendanceRecord record : attendanceRecords) {
+                // Convert timestamp to Africa/Cairo zone
+                var zoned = record.getTimestamp().atZone(ZoneId.of("UTC")).withZoneSameInstant(ZoneId.of("Africa/Cairo"));
                 csvPrinter.printRecord(
                         record.getUser().getFullName(),
                         record.getUser().getStudentId() != null ? record.getUser().getStudentId() : "N/A",
-                        record.getTimestamp().toLocalDate().format(dateFormatter),
-                        record.getTimestamp().toLocalTime().format(timeFormatter),
+                        zoned.toLocalDate().format(dateFormatter),
+                        zoned.toLocalTime().format(timeFormatter),
                         record.isVerified() ? "Yes" : "No"
                 );
             }

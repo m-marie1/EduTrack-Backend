@@ -77,13 +77,13 @@ public class AttendanceSessionController {
     }
 
     @GetMapping("/class-days-count/{courseId}")
-    @PreAuthorize("hasRole('PROFESSOR')")
+    // Removed @PreAuthorize so both students and professors can access
     public ResponseEntity<ApiResponse<Integer>> getClassDaysCount(@PathVariable Long courseId) {
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         String username = authentication.getName();
-        User professor = userRepository.findByUsername(username)
-                .orElseThrow(() -> new ResourceNotFoundException("Professor not found with username: " + username));
-        int count = attendanceSessionService.getClassDaysCount(professor, courseId);
+        User user = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found with username: " + username));
+        int count = attendanceSessionService.getClassDaysCount(user, courseId);
         return ResponseEntity.ok(ApiResponse.success("Class days count retrieved successfully", count));
     }
 
