@@ -1,24 +1,27 @@
 package com.college.attendance.service;
 
 import com.college.attendance.dto.SessionDto;
-import com.college.attendance.dto.UserDto; // Added import
+import com.college.attendance.dto.UserDto;
 import com.college.attendance.exception.ResourceNotFoundException;
 import com.college.attendance.model.*;
-import com.college.attendance.repository.AttendanceRepository; // Added import
+import com.college.attendance.repository.AttendanceRepository;
 import com.college.attendance.repository.AttendanceSessionRepository;
 import com.college.attendance.repository.CourseRepository;
 import com.college.attendance.repository.UserRepository;
+import com.college.attendance.repository.CourseAttendanceResetRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.security.SecureRandom;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Random;
-import java.util.stream.Collectors; // Added import
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -28,7 +31,8 @@ public class AttendanceSessionServiceImpl implements AttendanceSessionService {
     private final AttendanceSessionRepository attendanceSessionRepository;
     private final CourseRepository courseRepository;
     private final UserRepository userRepository;
-    private final AttendanceRepository attendanceRepository; // Added dependency
+    private final AttendanceRepository attendanceRepository;
+    private final CourseAttendanceResetRepository courseAttendanceResetRepository;
 
     private static final Random RANDOM = new SecureRandom();
     private static final int CODE_LENGTH = 6;
@@ -103,15 +107,13 @@ public class AttendanceSessionServiceImpl implements AttendanceSessionService {
     }
 
     @Override
-    @Transactional(readOnly = true) // Good practice for read operations
+    @Transactional(readOnly = true)
     public List<SessionDto> getActiveSessionsForProfessor(User professor) {
         if (professor.getRole() != Role.PROFESSOR) {
-            // Or throw SecurityException if preferred
             log.warn("User {} attempted to get active sessions without PROFESSOR role.", professor.getUsername());
             return List.of();
         }
         LocalDateTime now = LocalDateTime.now();
-        // Need a repository method for this: findByProfessorAndActiveTrueAndExpiresAtAfter
         List<AttendanceSession> activeSessions = attendanceSessionRepository.findByProfessorAndActiveTrueAndExpiresAtAfter(professor, now);
         return activeSessions.stream()
                 .map(this::convertToDto)
@@ -119,34 +121,62 @@ public class AttendanceSessionServiceImpl implements AttendanceSessionService {
     }
 
     @Override
-    @Transactional(readOnly = true) // Good practice for read operations
+    @Transactional(readOnly = true)
     public List<UserDto> getSessionAttendees(Long sessionId, User professor) {
         AttendanceSession session = attendanceSessionRepository.findById(sessionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Attendance session not found with ID: " + sessionId));
 
-        // Verify the requesting professor is the one who created the session
         if (!session.getProfessor().getId().equals(professor.getId())) {
             log.warn("Professor {} (ID: {}) attempted to access attendees for session {} owned by professor ID: {}",
                      professor.getUsername(), professor.getId(), sessionId, session.getProfessor().getId());
             throw new SecurityException("Professor does not have permission to view attendees for this session.");
         }
 
-        // Find verified attendance records for this specific session's course within the session's timeframe
         List<AttendanceRecord> verifiedRecords = attendanceRepository
                 .findByCourseAndTimestampBetweenAndVerifiedTrue(
                         session.getCourse(),
-                        session.getCreatedAt(), // Start time of the session
-                        session.getExpiresAt()  // End time of the session
+                        session.getCreatedAt(),
+                        session.getExpiresAt()
                 );
 
         return verifiedRecords.stream()
                 .map(AttendanceRecord::getUser)
                 .distinct()
-                .map(this::convertToUserDto) // Reuse existing helper method
+                .map(this::convertToUserDto)
                 .collect(Collectors.toList());
     }
 
-    // --- Helper Methods ---
+    @Override
+    public int getClassDaysCount(User professor, Long courseId) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found with ID: " + courseId));
+        LocalDateTime resetTime = courseAttendanceResetRepository
+                .findByProfessorAndCourse(professor, course)
+                .map(CourseAttendanceReset::getResetTimestamp)
+                .orElse(LocalDateTime.MIN);
+        List<AttendanceSession> sessions = attendanceSessionRepository
+                .findAll().stream()
+                .filter(s -> s.getProfessor().getId().equals(professor.getId()) &&
+                             s.getCourse().getId().equals(courseId) &&
+                             s.getCreatedAt().isAfter(resetTime))
+                .toList();
+        HashSet<LocalDate> uniqueDays = new HashSet<>();
+        for (AttendanceSession session : sessions) {
+            uniqueDays.add(session.getCreatedAt().toLocalDate());
+        }
+        return uniqueDays.size();
+    }
+
+    @Override
+    public void resetClassDaysCount(User professor, Long courseId) {
+        Course course = courseRepository.findById(courseId)
+                .orElseThrow(() -> new ResourceNotFoundException("Course not found with ID: " + courseId));
+        CourseAttendanceReset reset = courseAttendanceResetRepository
+                .findByProfessorAndCourse(professor, course)
+                .orElse(new CourseAttendanceReset(null, professor, course, null));
+        reset.setResetTimestamp(LocalDateTime.now());
+        courseAttendanceResetRepository.save(reset);
+    }
 
     private String generateRandomCode(int length) {
         StringBuilder code = new StringBuilder(length);
@@ -169,7 +199,6 @@ public class AttendanceSessionServiceImpl implements AttendanceSessionService {
         );
     }
 
-    // Helper method to convert User entity to UserDto
     private UserDto convertToUserDto(User user) {
         UserDto dto = new UserDto();
         dto.setId(user.getId());

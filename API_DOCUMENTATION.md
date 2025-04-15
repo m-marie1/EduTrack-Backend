@@ -509,6 +509,49 @@ Authorization: Bearer YOUR_TOKEN_HERE
 }
 ```
 
+### Get Total Classes (Number of Held Classes for a Course)
+
+```
+GET /api/api/attendance/sessions/class-days-count/{courseId}
+Authorization: Bearer YOUR_TOKEN_HERE
+```
+
+**Response (Success - 200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Class days count retrieved successfully",
+  "data": 12, // Number of unique days attendance sessions were created for this course
+  "timestamp": "2025-04-15T12:00:00"
+}
+```
+
+- This endpoint returns the number of unique days on which attendance sessions were created for the course (i.e., the number of classes held).
+- Professors can reset this count (e.g., at the start of a new semester) using the endpoint below.
+- **Note:** This endpoint is accessible to both professors and students enrolled in the course.
+
+### Reset Total Classes Count (Professor Only)
+
+```
+POST /api/api/attendance/sessions/class-days-count/{courseId}/reset
+Authorization: Bearer PROFESSOR_TOKEN_HERE
+```
+
+**Response (Success - 200 OK):**
+
+```json
+{
+  "success": true,
+  "message": "Class days count reset successfully",
+  "data": null,
+  "timestamp": "2025-04-15T12:00:00"
+}
+```
+
+- This endpoint resets the class days count for the course for the requesting professor (sets the reset timestamp to now).
+- Only professors can call this endpoint.
+
 ## Professor Requests
 
 ### Submit Professor Request (No Authentication Required)

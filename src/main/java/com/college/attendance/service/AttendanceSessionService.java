@@ -9,6 +9,7 @@ import java.time.LocalDateTime;
 import java.util.List; // Added import
 import com.college.attendance.dto.UserDto; // Added import
 import java.util.Optional;
+import java.time.LocalDate;
 
 public interface AttendanceSessionService {
 
@@ -61,4 +62,15 @@ public interface AttendanceSessionService {
      * @throws SecurityException if the professor did not create the session.
      */
     List<UserDto> getSessionAttendees(Long sessionId, User professor);
+
+    /**
+     * Returns the number of unique days on which a professor created attendance sessions for a course,
+     * counting only sessions after the last reset (if any).
+     */
+    int getClassDaysCount(User professor, Long courseId);
+
+    /**
+     * Resets the class days count for a professor and course (sets the reset timestamp to now).
+     */
+    void resetClassDaysCount(User professor, Long courseId);
 }

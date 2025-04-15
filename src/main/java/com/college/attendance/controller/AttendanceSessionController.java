@@ -75,4 +75,26 @@ public class AttendanceSessionController {
         List<UserDto> attendees = attendanceSessionService.getSessionAttendees(sessionId, professor);
         return ResponseEntity.ok(ApiResponse.success("Session attendees retrieved successfully", attendees));
     }
+
+    @GetMapping("/class-days-count/{courseId}")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<ApiResponse<Integer>> getClassDaysCount(@PathVariable Long courseId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User professor = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Professor not found with username: " + username));
+        int count = attendanceSessionService.getClassDaysCount(professor, courseId);
+        return ResponseEntity.ok(ApiResponse.success("Class days count retrieved successfully", count));
+    }
+
+    @PostMapping("/class-days-count/{courseId}/reset")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<ApiResponse<Void>> resetClassDaysCount(@PathVariable Long courseId) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User professor = userRepository.findByUsername(username)
+                .orElseThrow(() -> new ResourceNotFoundException("Professor not found with username: " + username));
+        attendanceSessionService.resetClassDaysCount(professor, courseId);
+        return ResponseEntity.ok(ApiResponse.success("Class days count reset successfully", null));
+    }
 }
