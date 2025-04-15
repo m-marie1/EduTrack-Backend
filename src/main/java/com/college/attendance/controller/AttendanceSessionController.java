@@ -19,7 +19,7 @@ import java.util.List; // Added import
 import com.college.attendance.dto.UserDto; // Added import
 
 @RestController
-@RequestMapping("/api/attendance/sessions")
+@RequestMapping("/api/api/attendance/sessions") // Fixed: Added /api prefix to match the request URL
 @RequiredArgsConstructor
 @Slf4j
 public class AttendanceSessionController {
