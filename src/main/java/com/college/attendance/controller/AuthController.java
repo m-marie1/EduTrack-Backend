@@ -281,6 +281,16 @@ public class AuthController {
                 .body(ApiResponse.error(e.getMessage()));
         }
     }
+
+    @PostMapping("/verify-reset-code")
+    public ResponseEntity<ApiResponse<Void>> verifyResetCode(@Valid @RequestBody ResetPasswordRequest request) {
+        try {
+            userVerificationService.verifyResetCode(request.getEmail(), request.getResetCode());
+            return ResponseEntity.ok(ApiResponse.success("Reset code verified successfully", null));
+        } catch (IllegalArgumentException | IllegalStateException e) {
+            return ResponseEntity.badRequest().body(ApiResponse.error(e.getMessage()));
+        }
+    }
     
     private String generateVerificationCode() {
         Random random = new Random();

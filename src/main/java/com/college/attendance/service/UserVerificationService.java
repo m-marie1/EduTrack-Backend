@@ -71,6 +71,23 @@ public class UserVerificationService {
         userRepository.save(user);
     }
     
+    public void verifyResetCode(String email, String resetCode) {
+        User user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new IllegalArgumentException("Email not found"));
+                
+        if (user.getResetCode() == null || user.getResetCodeExpiry() == null || 
+            LocalDateTime.now().isAfter(user.getResetCodeExpiry())) {
+            throw new IllegalStateException("Reset code has expired. Please request a new one.");
+        }
+        
+        if (!user.getResetCode().equals(resetCode)) {
+            incrementFailedAttempts(email);
+            throw new IllegalArgumentException("Invalid reset code");
+        }
+        
+        // Reset code is valid, but don't clear it yet since it will be needed for actual password reset
+    }
+    
     public void resendVerificationCode(String email) {
         User user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new IllegalArgumentException("Email not found"));
