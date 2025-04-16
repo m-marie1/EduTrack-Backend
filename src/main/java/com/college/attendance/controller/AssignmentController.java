@@ -92,6 +92,19 @@ public class AssignmentController {
         return ResponseEntity.ok(ApiResponse.success(assignments));
     }
     
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<ApiResponse<List<Assignment>>> getAllAssignments(
+            @RequestParam Long courseId) {
+        
+        Course course = courseRepository.findById(courseId)
+            .orElseThrow(() -> new IllegalArgumentException("Course not found"));
+        
+        List<Assignment> assignments = assignmentRepository.findByCourse(course);
+        
+        return ResponseEntity.ok(ApiResponse.success(assignments));
+    }
+    
     @GetMapping("/active")
     public ResponseEntity<ApiResponse<List<Assignment>>> getActiveAssignments(
             @RequestParam Long courseId) {
