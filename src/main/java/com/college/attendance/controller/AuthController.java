@@ -4,18 +4,26 @@ import com.college.attendance.dto.JwtResponse;
 import com.college.attendance.dto.LoginRequest;
 import com.college.attendance.dto.RegisterRequest;
 import com.college.attendance.dto.VerifyEmailDto;
+import com.college.attendance.dto.ChangePasswordRequest;
+import com.college.attendance.dto.ForgotPasswordRequest;
+import com.college.attendance.dto.ResetPasswordRequest;
+import com.college.attendance.exception.ResourceNotFoundException;
 import com.college.attendance.model.User;
 import com.college.attendance.repository.UserRepository;
 import com.college.attendance.security.CustomUserDetailsService;
 import com.college.attendance.security.JwtTokenUtil;
 import com.college.attendance.service.EmailService;
+import com.college.attendance.service.UserVerificationService;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,6 +48,7 @@ public class AuthController {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailService emailService;
+    private final UserVerificationService userVerificationService;
     private static final Logger logger = LoggerFactory.getLogger(AuthController.class);
 
     @PostMapping("/login")
@@ -209,6 +218,68 @@ public class AuthController {
             "Email verified successfully",
             response
         ));
+    }
+
+    @PostMapping("/change-password")
+    @PreAuthorize("isAuthenticated()")
+    public ResponseEntity<ApiResponse<Void>> changePassword(@Valid @RequestBody ChangePasswordRequest request) {
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User user = userRepository.findByUsername(username)
+            .orElseThrow(() -> new ResourceNotFoundException("User not found"));
+            
+        try {
+            userVerificationService.changePassword(user, request.getCurrentPassword(), request.getNewPassword());
+            return ResponseEntity.ok(ApiResponse.success("Password changed successfully", null));
+        } catch (BadCredentialsException e) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<String>> forgotPassword(@Valid @RequestBody ForgotPasswordRequest request) {
+        try {
+            userVerificationService.initiatePasswordReset(request.getEmail());
+            return ResponseEntity.ok(ApiResponse.success(
+                "Password reset instructions have been sent to your email",
+                null
+            ));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<String>> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        try {
+            userVerificationService.resetPassword(request.getEmail(), request.getResetCode(), request.getNewPassword());
+            return ResponseEntity.ok(ApiResponse.success(
+                "Password has been reset successfully",
+                null
+            ));
+        } catch (Exception e) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @PostMapping("/resend-verification")
+    public ResponseEntity<ApiResponse<String>> resendVerificationCode(@RequestBody ForgotPasswordRequest request) {
+        try {
+            userVerificationService.resendVerificationCode(request.getEmail());
+            return ResponseEntity.ok(ApiResponse.success(
+                "Verification code has been resent to your email",
+                null
+            ));
+        } catch (IllegalStateException e) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error(e.getMessage()));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error(e.getMessage()));
+        }
     }
     
     private String generateVerificationCode() {

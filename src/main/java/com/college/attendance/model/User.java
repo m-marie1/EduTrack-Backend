@@ -10,6 +10,7 @@ import lombok.EqualsAndHashCode;
 import lombok.NoArgsConstructor;
 import lombok.ToString;
 
+import java.time.LocalDateTime;
 import java.util.Set;
 
 @Entity
@@ -50,6 +51,8 @@ public class User {
     private boolean emailVerified = false;
     
     private String verificationCode;
+    private String resetCode;
+    private LocalDateTime resetCodeExpiry;
     
     @OneToOne
     @JoinColumn(name = "professor_request_id")
