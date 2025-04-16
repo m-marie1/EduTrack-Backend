@@ -7,6 +7,7 @@ import com.college.attendance.dto.VerifyEmailDto;
 import com.college.attendance.dto.ChangePasswordRequest;
 import com.college.attendance.dto.ForgotPasswordRequest;
 import com.college.attendance.dto.ResetPasswordRequest;
+import com.college.attendance.dto.VerifyResetCodeRequest;
 import com.college.attendance.exception.ResourceNotFoundException;
 import com.college.attendance.model.User;
 import com.college.attendance.repository.UserRepository;
@@ -283,7 +284,7 @@ public class AuthController {
     }
 
     @PostMapping("/verify-reset-code")
-    public ResponseEntity<ApiResponse<Void>> verifyResetCode(@Valid @RequestBody ResetPasswordRequest request) {
+    public ResponseEntity<ApiResponse<Void>> verifyResetCode(@Valid @RequestBody VerifyResetCodeRequest request) {
         try {
             userVerificationService.verifyResetCode(request.getEmail(), request.getResetCode());
             return ResponseEntity.ok(ApiResponse.success("Reset code verified successfully", null));
