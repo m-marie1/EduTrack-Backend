@@ -594,8 +594,6 @@ POST /api/api/professor-requests
 
 ## Quizzes
 
-_(Quiz endpoints remain unchanged)_
-
 ### Create Quiz (Professor Only)
 
 ```
@@ -902,9 +900,77 @@ Response is a CSV file download.
 - 400 Bad Request: If professor doesn't own the quiz
 - 404 Not Found: If quiz not found
 
-## Assignments
+### Update Quiz (Professor Only)
 
-_(Assignment endpoints remain unchanged)_
+```
+PUT /api/quizzes/{quizId}
+Authorization: Bearer PROFESSOR_TOKEN_HERE
+```
+
+**Request Body:**
+
+```json
+{
+  "title": "Updated Midterm Quiz",
+  "description": "Updated quiz covering chapters 1-5",
+  "courseId": 1,
+  "startDate": "2023-04-15T10:00:00",
+  "endDate": "2023-04-15T12:00:00",
+  "durationMinutes": 120,
+  "questions": [
+    {
+      "text": "What is inheritance in OOP?",
+      "type": "MULTIPLE_CHOICE",
+      "points": 5,
+      "options": [
+        {
+          "text": "A mechanism where one class acquires properties of another class",
+          "correct": true
+        },
+        {
+          "text": "A way to hide implementation details",
+          "correct": false
+        }
+      ]
+    },
+    {
+      "text": "Explain polymorphism",
+      "type": "TEXT_ANSWER",
+      "points": 10,
+      "correctAnswer": "Polymorphism is the ability of different objects to respond to the same message in different ways"
+    }
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Quiz updated successfully",
+  "data": {
+    "id": 1,
+    "title": "Updated Midterm Quiz",
+    "description": "Updated quiz covering chapters 1-5",
+    "course": {...},
+    "creator": {...},
+    "startDate": "2023-04-15T10:00:00",
+    "endDate": "2023-04-15T12:00:00",
+    "durationMinutes": 120,
+    "questions": [...]
+  },
+  "timestamp": "2023-04-10T14:25:30"
+}
+```
+
+**Notes:**
+
+- This endpoint is only available to the professor who created the quiz
+- If the quiz already has attempts, only the end date can be modified (to extend the deadline)
+- If there are no attempts yet, all quiz properties including questions can be modified
+
+## Assignments
 
 ### Create Assignment (Professor Only)
 
@@ -1024,6 +1090,110 @@ Authorization: Bearer STUDENT_TOKEN_HERE
   "timestamp": "2023-03-23T12:34:56.789"
 }
 ```
+
+### Edit Assignment Submission (Student Only)
+
+```
+PUT /api/assignments/submissions/{submissionId}
+Authorization: Bearer STUDENT_TOKEN_HERE
+```
+
+**Request Body:**
+
+```json
+{
+  "notes": "Updated submission with corrections",
+  "files": [
+    {
+      "fileName": "FinalProject-Updated.zip",
+      "fileUrl": "/uploads/FinalProject-Updated.zip",
+      "contentType": "application/zip",
+      "fileSize": 3789012
+    }
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Assignment submission updated successfully",
+  "data": {
+    "id": 1,
+    "assignment": {...},
+    "student": {...},
+    "notes": "Updated submission with corrections",
+    "submissionDate": "2023-05-15T11:20:30",
+    "gradedDate": "2023-05-14T15:30:00",  // If previously graded
+    "score": 85,  // If previously graded
+    "feedback": "Good work, but missing proper documentation",  // If previously graded
+    "graded": true,  // If previously graded
+    "late": false,
+    "files": [...]
+  },
+  "timestamp": "2023-05-15T11:20:30"
+}
+```
+
+**Notes:**
+
+- This endpoint is only available to the student who made the submission
+- Students can only edit submissions before the assignment due date
+- If the submission was previously graded, editing will not change the graded status but will update the submission date, which can be compared with gradedDate to detect edits after grading
+
+### Update Assignment (Professor Only)
+
+```
+PUT /api/assignments/{assignmentId}
+Authorization: Bearer PROFESSOR_TOKEN_HERE
+```
+
+**Request Body:**
+
+```json
+{
+  "title": "Updated Final Project",
+  "description": "Implement a web application using Spring Boot with updated requirements",
+  "dueDate": "2023-05-20T23:59:59",
+  "maxPoints": 100,
+  "files": [
+    {
+      "fileName": "updated_project_requirements.pdf",
+      "fileUrl": "/uploads/updated_project_requirements.pdf",
+      "contentType": "application/pdf",
+      "fileSize": 267890
+    }
+  ]
+}
+```
+
+**Response:**
+
+```json
+{
+  "success": true,
+  "message": "Assignment updated successfully",
+  "data": {
+    "id": 1,
+    "title": "Updated Final Project",
+    "description": "Implement a web application using Spring Boot with updated requirements",
+    "course": {...},
+    "creator": {...},
+    "dueDate": "2023-05-20T23:59:59",
+    "createdAt": "2023-03-23T12:34:56.789",
+    "maxPoints": 100,
+    "files": [...]
+  },
+  "timestamp": "2023-05-10T14:25:30"
+}
+```
+
+**Notes:**
+
+- This endpoint is only available to the professor who created the assignment
+- Updating the assignment will not affect existing submissions
 
 ### Grade Assignment Submission (Professor Only)
 

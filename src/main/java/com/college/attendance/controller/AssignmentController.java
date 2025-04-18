@@ -200,6 +200,73 @@ public class AssignmentController {
         );
     }
     
+    @PutMapping("/submissions/{submissionId}")
+    @PreAuthorize("hasRole('STUDENT')")
+    public ResponseEntity<ApiResponse<AssignmentSubmission>> editSubmission(
+            @PathVariable Long submissionId,
+            @Valid @RequestBody SubmissionDto submissionDto) {
+        
+        // Get the authenticated user
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User student = userRepository.findByUsername(username)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        // Get the submission
+        AssignmentSubmission submission = submissionRepository.findById(submissionId)
+            .orElseThrow(() -> new IllegalArgumentException("Submission not found"));
+        
+        // Check if this is the student's submission
+        if (!submission.getStudent().getId().equals(student.getId())) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("You can only edit your own submissions"));
+        }
+        
+        // Get the assignment
+        Assignment assignment = submission.getAssignment();
+        
+        // Check if the due date has passed
+        LocalDateTime now = LocalDateTime.now();
+        if (now.isAfter(assignment.getDueDate())) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Cannot edit submission after due date"));
+        }
+        
+        // Update submission details
+        submission.setNotes(submissionDto.getNotes());
+        submission.setSubmissionDate(now); // Update submission date to reflect the edit
+        
+        // If previously graded, mark it to indicate it was edited after grading
+        if (submission.isGraded()) {
+            // We're not changing the graded status, but the updated submission date 
+            // will be more recent than the graded date, which will allow the frontend 
+            // to detect this case
+        }
+        
+        // Process file attachments if any
+        if (submissionDto.getFiles() != null && !submissionDto.getFiles().isEmpty()) {
+            List<FileInfo> files = submissionDto.getFiles().stream()
+                .map(fileDto -> {
+                    FileInfo fileInfo = new FileInfo();
+                    fileInfo.setFileName(fileDto.getFileName());
+                    fileInfo.setFileUrl(fileDto.getFileUrl());
+                    fileInfo.setContentType(fileDto.getContentType());
+                    fileInfo.setFileSize(fileDto.getFileSize());
+                    fileInfo.setUploadedAt(LocalDateTime.now());
+                    return fileInfo;
+                })
+                .collect(Collectors.toList());
+            
+            submission.setFiles(files);
+        }
+        
+        AssignmentSubmission savedSubmission = submissionRepository.save(submission);
+        
+        return ResponseEntity.ok(
+            ApiResponse.success("Assignment submission updated successfully", savedSubmission)
+        );
+    }
+    
     @GetMapping("/{assignmentId}/submissions")
     @PreAuthorize("hasRole('PROFESSOR')")
     public ResponseEntity<ApiResponse<List<AssignmentSubmission>>> getSubmissions(
@@ -301,6 +368,58 @@ public class AssignmentController {
         
         return ResponseEntity.ok(
             ApiResponse.success("Assignment deleted successfully")
+        );
+    }
+    
+    @PutMapping("/{assignmentId}")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<ApiResponse<Assignment>> updateAssignment(
+            @PathVariable Long assignmentId,
+            @Valid @RequestBody AssignmentDto assignmentDto) {
+        
+        // Get the authenticated user
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User professor = userRepository.findByUsername(username)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        // Get the assignment
+        Assignment assignment = assignmentRepository.findById(assignmentId)
+            .orElseThrow(() -> new IllegalArgumentException("Assignment not found"));
+        
+        // Check if the professor created this assignment
+        if (!assignment.getCreator().getId().equals(professor.getId())) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("You can only update assignments you created"));
+        }
+        
+        // Update the assignment
+        assignment.setTitle(assignmentDto.getTitle());
+        assignment.setDescription(assignmentDto.getDescription());
+        assignment.setDueDate(assignmentDto.getDueDate());
+        assignment.setMaxPoints(assignmentDto.getMaxPoints());
+        
+        // Process file attachments if any
+        if (assignmentDto.getFiles() != null && !assignmentDto.getFiles().isEmpty()) {
+            List<FileInfo> files = assignmentDto.getFiles().stream()
+                .map(fileDto -> {
+                    FileInfo fileInfo = new FileInfo();
+                    fileInfo.setFileName(fileDto.getFileName());
+                    fileInfo.setFileUrl(fileDto.getFileUrl());
+                    fileInfo.setContentType(fileDto.getContentType());
+                    fileInfo.setFileSize(fileDto.getFileSize());
+                    fileInfo.setUploadedAt(LocalDateTime.now());
+                    return fileInfo;
+                })
+                .collect(Collectors.toList());
+            
+            assignment.setFiles(files);
+        }
+        
+        Assignment updatedAssignment = assignmentRepository.save(assignment);
+        
+        return ResponseEntity.ok(
+            ApiResponse.success("Assignment updated successfully", updatedAssignment)
         );
     }
 }

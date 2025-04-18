@@ -202,6 +202,119 @@ public class QuizController {
         return ResponseEntity.ok(ApiResponse.success(quiz));
     }
     
+    @PutMapping("/{quizId}")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<ApiResponse<Quiz>> updateQuiz(
+            @PathVariable Long quizId, 
+            @Valid @RequestBody QuizDto quizDto) {
+        try {
+            // Get the authenticated user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+            User professor = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                
+            // Get the quiz
+            Quiz quiz = quizRepository.findById(quizId)
+                .orElseThrow(() -> new IllegalArgumentException("Quiz not found"));
+                
+            // Check if the professor created this quiz
+            if (!quiz.getCreator().getId().equals(professor.getId())) {
+                return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("You can only update quizzes you created"));
+            }
+            
+            // Check if quiz has any attempts - if so, restrict certain changes
+            boolean hasAttempts = !quizAttemptRepository.findByQuiz(quiz).isEmpty();
+            
+            // Update basic quiz details
+            quiz.setTitle(quizDto.getTitle());
+            quiz.setDescription(quizDto.getDescription());
+            
+            // Only allow changing dates/duration if no attempts yet
+            if (!hasAttempts) {
+                quiz.setStartDate(quizDto.getStartDate());
+                quiz.setEndDate(quizDto.getEndDate());
+                quiz.setDurationMinutes(quizDto.getDurationMinutes());
+                
+                // Handle questions update
+                if (quizDto.getQuestions() != null) {
+                    // Delete existing questions
+                    List<Question> existingQuestions = quiz.getQuestions();
+                    if (existingQuestions != null) {
+                        questionRepository.deleteAll(existingQuestions);
+                    }
+                    
+                    // Create new questions list
+                    List<Question> newQuestions = new ArrayList<>();
+                    
+                    for (int i = 0; i < quizDto.getQuestions().size(); i++) {
+                        var questionDto = quizDto.getQuestions().get(i);
+                        
+                        Question question = new Question();
+                        question.setQuiz(quiz);
+                        question.setText(questionDto.getText());
+                        question.setImageUrl(questionDto.getImageUrl());
+                        question.setType(questionDto.getType());
+                        question.setPoints(questionDto.getPoints() != null ? questionDto.getPoints() : 1);
+                        question.setOrder(i + 1);
+                        
+                        // For text answer questions
+                        if (questionDto.getType() == QuestionType.TEXT_ANSWER) {
+                            question.setCorrectAnswer(questionDto.getCorrectAnswer());
+                        }
+                        
+                        // For multiple choice questions, create options
+                        if (questionDto.getType() == QuestionType.MULTIPLE_CHOICE && 
+                            questionDto.getOptions() != null && !questionDto.getOptions().isEmpty()) {
+                            
+                            List<QuestionOption> options = new ArrayList<>();
+                            
+                            for (int j = 0; j < questionDto.getOptions().size(); j++) {
+                                var optionDto = questionDto.getOptions().get(j);
+                                
+                                QuestionOption option = new QuestionOption();
+                                option.setQuestion(question);
+                                option.setText(optionDto.getText());
+                                option.setCorrect(optionDto.getCorrect());
+                                option.setOrder(j + 1);
+                                
+                                options.add(option);
+                            }
+                            
+                            question.setOptions(options);
+                        }
+                        
+                        newQuestions.add(question);
+                    }
+                    
+                    quiz.setQuestions(newQuestions);
+                }
+            } else {
+                // Just update dates if there are already attempts
+                quiz.setEndDate(quizDto.getEndDate()); // Allow extending the end date
+            }
+            
+            // Save the entire graph at once
+            Quiz updatedQuiz = quizRepository.save(quiz);
+            
+            // Clear any circular references
+            if (updatedQuiz.getQuestions() != null) {
+                updatedQuiz.getQuestions().forEach(q -> q.setQuiz(null));
+            }
+            
+            return ResponseEntity.ok(
+                hasAttempts
+                    ? ApiResponse.success("Quiz updated with limited changes due to existing attempts", updatedQuiz)
+                    : ApiResponse.success("Quiz updated successfully", updatedQuiz)
+            );
+        } catch (Exception e) {
+            e.printStackTrace();
+            return ResponseEntity.internalServerError()
+                .body(ApiResponse.error("Failed to update quiz: " + e.getMessage()));
+        }
+    }
+    
     @PostMapping("/{quizId}/start")
     @PreAuthorize("hasRole('STUDENT')")
     public ResponseEntity<ApiResponse<QuizAttempt>> startQuiz(@PathVariable Long quizId) {
