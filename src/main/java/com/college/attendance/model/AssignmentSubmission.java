@@ -3,6 +3,7 @@ package com.college.attendance.model;
 import com.fasterxml.jackson.annotation.JsonBackReference;
 import com.fasterxml.jackson.annotation.JsonIdentityInfo;
 import com.fasterxml.jackson.annotation.JsonIdentityReference;
+import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.ObjectIdGenerators;
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;
@@ -56,4 +57,20 @@ public class AssignmentSubmission {
     
     @Column(nullable = false)
     private boolean late = false;
+    
+    // New JSON properties for client consumption
+    @JsonProperty("studentName")
+    public String getStudentName() {
+        return student != null ? student.getFullName() : null;
+    }
+
+    @JsonProperty("assignmentId")
+    public Long getAssignmentId() {
+        return assignment != null ? assignment.getId() : null;
+    }
+
+    @JsonProperty("assignmentTitle")
+    public String getAssignmentTitle() {
+        return assignment != null ? assignment.getTitle() : null;
+    }
 }
