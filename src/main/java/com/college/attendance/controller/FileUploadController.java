@@ -60,7 +60,8 @@ public class FileUploadController {
     
     @PostMapping("/public")
     public ResponseEntity<ApiResponse<FileInfo>> uploadPublicFile(
-            @RequestParam("file") MultipartFile file) {
+            @RequestParam("file") MultipartFile file,
+            @RequestParam(value = "fileType", required = false) String fileType) {
         try {
             if (file.isEmpty()) {
                 return ResponseEntity.badRequest()
@@ -81,8 +82,13 @@ public class FileUploadController {
                     .body(ApiResponse.error("Only images, PDFs, and Office documents are allowed"));
             }
             
-            // Store the file
-            FileInfo fileInfo = fileStorageService.storeFile(file);
+            // Store the file based on type
+            FileInfo fileInfo;
+            if ("professor-id".equals(fileType)) {
+                fileInfo = fileStorageService.storeProfessorIdImage(file);
+            } else {
+                fileInfo = fileStorageService.storeFile(file);
+            }
             
             return ResponseEntity.ok(
                 ApiResponse.success("File uploaded successfully", fileInfo)

@@ -42,6 +42,8 @@ public class SecurityConfig {
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/api/professor-requests").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/upload/public").permitAll()
                 .requestMatchers(org.springframework.http.HttpMethod.POST, "/api/api/upload/public").permitAll()
+                .requestMatchers("/uploads/professor-id/**").hasAuthority("ROLE_ADMIN")
+                .requestMatchers("/uploads/**").authenticated()
                 .requestMatchers("/api/professor-requests").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/api/professor-requests/**").hasAuthority("ROLE_ADMIN")
                 .requestMatchers("/api/api/professor-requests").hasAuthority("ROLE_ADMIN")

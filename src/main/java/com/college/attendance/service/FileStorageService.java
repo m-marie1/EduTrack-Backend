@@ -19,9 +19,26 @@ public class FileStorageService {
     @Value("${file.upload-dir}")
     private String uploadDir;
     
+    /**
+     * Standard method to store any file
+     */
     public FileInfo storeFile(MultipartFile file) throws IOException {
-        // Create the upload directory if it doesn't exist
-        Path uploadPath = Paths.get(uploadDir);
+        return storeFile(file, "");
+    }
+    
+    /**
+     * Store professor ID images in a specific subfolder
+     */
+    public FileInfo storeProfessorIdImage(MultipartFile file) throws IOException {
+        return storeFile(file, "professor-id/");
+    }
+    
+    /**
+     * Core file storage method with subfolder support
+     */
+    private FileInfo storeFile(MultipartFile file, String subFolder) throws IOException {
+        // Create the full upload path with subfolder
+        Path uploadPath = Paths.get(uploadDir, subFolder);
         if (!Files.exists(uploadPath)) {
             Files.createDirectories(uploadPath);
         }
@@ -39,10 +56,19 @@ public class FileStorageService {
         Path targetLocation = uploadPath.resolve(uniqueFileName);
         Files.copy(file.getInputStream(), targetLocation, StandardCopyOption.REPLACE_EXISTING);
         
-        // Create and return file info
+        // Create and return file info with the API endpoint path instead of direct file path
         FileInfo fileInfo = new FileInfo();
         fileInfo.setFileName(originalFileName);
-        fileInfo.setFileUrl("/uploads/" + uniqueFileName);
+        
+        // Set different URL pattern based on file type
+        if (subFolder.equals("professor-id/")) {
+            // For professor ID images - use API endpoint
+            fileInfo.setFileUrl("/api/files/professor-id/" + uniqueFileName);
+        } else {
+            // For regular files - use API endpoint
+            fileInfo.setFileUrl("/api/files/" + uniqueFileName);
+        }
+        
         fileInfo.setContentType(file.getContentType());
         fileInfo.setFileSize(file.getSize());
         fileInfo.setUploadedAt(LocalDateTime.now());
