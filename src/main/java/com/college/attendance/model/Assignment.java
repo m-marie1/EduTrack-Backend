@@ -48,6 +48,9 @@ public class Assignment {
     
     private Integer maxPoints = 100;
     
+    @Column(nullable = false)
+    private boolean isDraft = false;
+    
     @ElementCollection
     @CollectionTable(name = "assignment_files", joinColumns = @JoinColumn(name = "assignment_id"))
     private List<FileInfo> files;

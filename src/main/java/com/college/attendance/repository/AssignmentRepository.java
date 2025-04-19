@@ -18,4 +18,6 @@ public interface AssignmentRepository extends JpaRepository<Assignment, Long> {
     List<Assignment> findByCourseAndDueDateAfter(Course course, LocalDateTime now);
     
     List<Assignment> findByCourseAndDueDateBefore(Course course, LocalDateTime now);
+    
+    List<Assignment> findByCreatorAndIsDraftTrue(User creator);
 } 

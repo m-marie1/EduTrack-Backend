@@ -61,7 +61,11 @@ public class QuizController {
             quiz.setEndDate(quizDto.getEndDate());
             quiz.setDurationMinutes(quizDto.getDurationMinutes());
             
-            // Create questions list
+            // Handle the isDraft field
+            if (quizDto.getIsDraft() != null) {
+                quiz.setDraft(quizDto.getIsDraft());
+            }
+            
             List<Question> questions = new ArrayList<>();
             
             if (quizDto.getQuestions() != null && !quizDto.getQuestions().isEmpty()) {
@@ -71,17 +75,16 @@ public class QuizController {
                     Question question = new Question();
                     question.setQuiz(quiz);
                     question.setText(questionDto.getText());
-                    question.setImageUrl(questionDto.getImageUrl());
                     question.setType(questionDto.getType());
-                    question.setPoints(questionDto.getPoints() != null ? questionDto.getPoints() : 1);
+                    question.setPoints(questionDto.getPoints());
                     question.setOrder(i + 1);
                     
-                    // For text answer questions
+                    // Handle text answer questions
                     if (questionDto.getType() == QuestionType.TEXT_ANSWER) {
                         question.setCorrectAnswer(questionDto.getCorrectAnswer());
                     }
                     
-                    // For multiple choice questions, create options
+                    // Handle multiple choice questions
                     if (questionDto.getType() == QuestionType.MULTIPLE_CHOICE && 
                         questionDto.getOptions() != null && !questionDto.getOptions().isEmpty()) {
                         
@@ -124,10 +127,9 @@ public class QuizController {
                 ApiResponse.success("Quiz created successfully", responseQuiz)
             );
         } catch (Exception e) {
-            // Log the exception for debugging
-            e.printStackTrace();
-            return ResponseEntity.internalServerError()
-                .body(ApiResponse.error("Failed to create quiz: " + e.getMessage()));
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error("Failed to create quiz: " + e.getMessage())
+            );
         }
     }
     
@@ -707,5 +709,30 @@ public class QuizController {
         mapped.put("text", option.getText());
         mapped.put("correct", option.isCorrect());
         return mapped;
+    }
+
+    // Get draft quizzes (Professor only)
+    @GetMapping("/drafts")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<ApiResponse<List<Quiz>>> getDraftQuizzes() {
+        // Get the authenticated user
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User professor = userRepository.findByUsername(username)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        // Get all quizzes by this professor with isDraft=true
+        List<Quiz> draftQuizzes = quizRepository.findByCreatorAndIsDraftTrue(professor);
+        
+        // Clear circular references for the response
+        draftQuizzes.forEach(quiz -> {
+            if (quiz.getQuestions() != null) {
+                quiz.getQuestions().forEach(q -> q.setQuiz(null));
+            }
+        });
+        
+        return ResponseEntity.ok(
+            ApiResponse.success("Draft quizzes retrieved successfully", draftQuizzes)
+        );
     }
 }

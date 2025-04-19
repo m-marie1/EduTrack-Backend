@@ -31,5 +31,7 @@ public class AssignmentDto {
     
     private Integer maxPoints = 100;
     
+    private Boolean isDraft = false;
+    
     private List<FileDto> files;
 } 

@@ -33,51 +33,55 @@ public class AssignmentController {
     
     @PostMapping
     @PreAuthorize("hasRole('PROFESSOR')")
-    public ResponseEntity<ApiResponse<Assignment>> createAssignment(
-            @Valid @RequestBody AssignmentDto assignmentDto) {
-        
-        // Get the authenticated user
-        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
-        String username = authentication.getName();
-        User creator = userRepository.findByUsername(username)
-            .orElseThrow(() -> new IllegalArgumentException("User not found"));
-        
-        // Get the course
-        Course course = courseRepository.findById(assignmentDto.getCourseId())
-            .orElseThrow(() -> new IllegalArgumentException("Course not found"));
-        
-        // Create the assignment
-        Assignment assignment = new Assignment();
-        assignment.setTitle(assignmentDto.getTitle());
-        assignment.setDescription(assignmentDto.getDescription());
-        assignment.setCourse(course);
-        assignment.setCreator(creator);
-        assignment.setDueDate(assignmentDto.getDueDate());
-        assignment.setCreatedAt(LocalDateTime.now());
-        assignment.setMaxPoints(assignmentDto.getMaxPoints());
-        
-        // Process file attachments if any
-        if (assignmentDto.getFiles() != null && !assignmentDto.getFiles().isEmpty()) {
-            List<FileInfo> files = assignmentDto.getFiles().stream()
-                .map(fileDto -> {
-                    FileInfo fileInfo = new FileInfo();
-                    fileInfo.setFileName(fileDto.getFileName());
-                    fileInfo.setFileUrl(fileDto.getFileUrl());
-                    fileInfo.setContentType(fileDto.getContentType());
-                    fileInfo.setFileSize(fileDto.getFileSize());
-                    fileInfo.setUploadedAt(LocalDateTime.now());
-                    return fileInfo;
-                })
-                .collect(Collectors.toList());
+    public ResponseEntity<ApiResponse<Assignment>> createAssignment(@Valid @RequestBody AssignmentDto assignmentDto) {
+        try {
+            // Get the authenticated user
+            Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+            String username = authentication.getName();
+            User creator = userRepository.findByUsername(username)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
             
-            assignment.setFiles(files);
+            // Get the course
+            Course course = courseRepository.findById(assignmentDto.getCourseId())
+                .orElseThrow(() -> new IllegalArgumentException("Course not found"));
+            
+            // Create and save the assignment
+            Assignment assignment = new Assignment();
+            assignment.setTitle(assignmentDto.getTitle());
+            assignment.setDescription(assignmentDto.getDescription());
+            assignment.setCourse(course);
+            assignment.setCreator(creator);
+            assignment.setDueDate(assignmentDto.getDueDate());
+            if (assignmentDto.getMaxPoints() != null) {
+                assignment.setMaxPoints(assignmentDto.getMaxPoints());
+            }
+            // Handle isDraft field
+            if (assignmentDto.getIsDraft() != null) {
+                assignment.setDraft(assignmentDto.getIsDraft());
+            }
+            
+            if (assignmentDto.getFiles() != null && !assignmentDto.getFiles().isEmpty()) {
+                List<FileInfo> files = assignmentDto.getFiles().stream()
+                    .map(fileDto -> new FileInfo(
+                        fileDto.getFileName(),
+                        fileDto.getFileUrl(),
+                        fileDto.getContentType(),
+                        fileDto.getFileSize()
+                    ))
+                    .collect(Collectors.toList());
+                assignment.setFiles(files);
+            }
+            
+            Assignment savedAssignment = assignmentRepository.save(assignment);
+            
+            return ResponseEntity.status(HttpStatus.CREATED).body(
+                ApiResponse.success("Assignment created successfully", savedAssignment)
+            );
+        } catch (Exception e) {
+            return ResponseEntity.badRequest().body(
+                ApiResponse.error("Failed to create assignment: " + e.getMessage())
+            );
         }
-        
-        Assignment savedAssignment = assignmentRepository.save(assignment);
-        
-        return ResponseEntity.ok(
-            ApiResponse.success("Assignment created successfully", savedAssignment)
-        );
     }
     
     @GetMapping
@@ -420,6 +424,24 @@ public class AssignmentController {
         
         return ResponseEntity.ok(
             ApiResponse.success("Assignment updated successfully", updatedAssignment)
+        );
+    }
+    
+    // Get draft assignments (Professor only)
+    @GetMapping("/drafts")
+    @PreAuthorize("hasRole('PROFESSOR')")
+    public ResponseEntity<ApiResponse<List<Assignment>>> getDraftAssignments() {
+        // Get the authenticated user
+        Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
+        String username = authentication.getName();
+        User professor = userRepository.findByUsername(username)
+            .orElseThrow(() -> new IllegalArgumentException("User not found"));
+        
+        // Get all assignments by this professor with isDraft=true
+        List<Assignment> draftAssignments = assignmentRepository.findByCreatorAndIsDraftTrue(professor);
+        
+        return ResponseEntity.ok(
+            ApiResponse.success("Draft assignments retrieved successfully", draftAssignments)
         );
     }
 }
