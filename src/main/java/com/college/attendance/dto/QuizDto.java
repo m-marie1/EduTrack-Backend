@@ -36,8 +36,6 @@ public class QuizDto {
     @Positive(message = "Duration must be positive")
     private Integer durationMinutes;
     
-    private Boolean isDraft = false;
-    
     @Size(min = 1, message = "At least one question is required")
     private List<QuestionDto> questions;
 } 

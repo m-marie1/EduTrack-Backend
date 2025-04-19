@@ -608,25 +608,34 @@ Authorization: Bearer PROFESSOR_TOKEN_HERE
   "title": "Midterm Exam",
   "description": "Covers chapters 1-5",
   "courseId": 1,
-  "startDate": "2023-04-15T10:00:00",
-  "endDate": "2023-04-15T12:00:00",
-  "durationMinutes": 120,
-  "isDraft": false,
+  "startDate": "2023-04-01T09:00:00",
+  "endDate": "2023-04-01T23:59:59",
+  "durationMinutes": 60,
   "questions": [
     {
-      "text": "What is inheritance in OOP?",
+      "text": "What is the capital of France?",
       "type": "MULTIPLE_CHOICE",
-      "points": 5,
+      "points": 2,
       "options": [
         {
-          "text": "A mechanism where one class acquires properties of another class",
+          "text": "London",
+          "correct": false
+        },
+        {
+          "text": "Paris",
           "correct": true
         },
         {
-          "text": "A way to hide implementation details",
+          "text": "Rome",
           "correct": false
         }
       ]
+    },
+    {
+      "text": "Define polymorphism",
+      "type": "TEXT_ANSWER",
+      "points": 5,
+      "correctAnswer": "Polymorphism is the ability of an object to take many forms"
     }
   ]
 }
@@ -642,15 +651,12 @@ Authorization: Bearer PROFESSOR_TOKEN_HERE
     "id": 1,
     "title": "Midterm Exam",
     "description": "Covers chapters 1-5",
-    "course": {...},
-    "creator": {...},
-    "startDate": "2023-04-15T10:00:00",
-    "endDate": "2023-04-15T12:00:00",
-    "durationMinutes": 120,
-    "isDraft": false,
+    "startDate": "2023-04-01T09:00:00",
+    "endDate": "2023-04-01T23:59:59",
+    "durationMinutes": 60,
     "questions": [...]
   },
-  "timestamp": "2023-04-10T14:25:30"
+  "timestamp": "2023-03-23T12:34:56.789"
 }
 ```
 
@@ -964,37 +970,6 @@ Authorization: Bearer PROFESSOR_TOKEN_HERE
 - If the quiz already has attempts, only the end date can be modified (to extend the deadline)
 - If there are no attempts yet, all quiz properties including questions can be modified
 
-### Get Draft Quizzes (Professor Only)
-
-```
-GET /api/quizzes/drafts
-Authorization: Bearer PROFESSOR_TOKEN_HERE
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Draft quizzes retrieved successfully",
-  "data": [
-    {
-      "id": 1,
-      "title": "Draft Quiz",
-      "description": "This is a quiz in draft state",
-      "course": {...},
-      "creator": {...},
-      "startDate": "2023-04-15T10:00:00",
-      "endDate": "2023-04-15T12:00:00",
-      "durationMinutes": 120,
-      "isDraft": true,
-      "questions": [...]
-    }
-  ],
-  "timestamp": "2023-04-10T14:25:30"
-}
-```
-
 ## Assignments
 
 ### Create Assignment (Professor Only)
@@ -1013,7 +988,6 @@ Authorization: Bearer PROFESSOR_TOKEN_HERE
   "courseId": 1,
   "dueDate": "2023-05-15T23:59:59",
   "maxPoints": 100,
-  "isDraft": false,
   "files": [
     {
       "fileName": "project_requirements.pdf",
@@ -1040,40 +1014,8 @@ Authorization: Bearer PROFESSOR_TOKEN_HERE
     "dueDate": "2023-05-15T23:59:59",
     "createdAt": "2023-03-23T12:34:56.789",
     "maxPoints": 100,
-    "isDraft": false,
     "files": [...]
   },
-  "timestamp": "2023-03-23T12:34:56.789"
-}
-```
-
-### Get Draft Assignments (Professor Only)
-
-```
-GET /api/assignments/drafts
-Authorization: Bearer PROFESSOR_TOKEN_HERE
-```
-
-**Response:**
-
-```json
-{
-  "success": true,
-  "message": "Draft assignments retrieved successfully",
-  "data": [
-    {
-      "id": 1,
-      "title": "Draft Assignment",
-      "description": "This is an assignment in draft state",
-      "course": {...},
-      "creator": {...},
-      "dueDate": "2023-05-15T23:59:59",
-      "createdAt": "2023-03-23T12:34:56.789",
-      "maxPoints": 100,
-      "isDraft": true,
-      "files": [...]
-    }
-  ],
   "timestamp": "2023-03-23T12:34:56.789"
 }
 ```

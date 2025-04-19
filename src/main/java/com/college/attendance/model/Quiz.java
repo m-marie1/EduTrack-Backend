@@ -38,9 +38,6 @@ public class Quiz {
     @Column(nullable = false)
     private Integer durationMinutes;
     
-    @Column(nullable = false)
-    private boolean isDraft = false;
-    
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "course_id", nullable = false)
     @JsonIdentityReference(alwaysAsId = true)
