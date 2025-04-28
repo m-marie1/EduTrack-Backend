@@ -143,6 +143,13 @@
 			<artifactId>commons-csv</artifactId>
 			<version>1.10.0</version> <!-- Use the latest version -->
 </dependency>
+
+<!-- Cloudinary -->
+<dependency>
+    <groupId>com.cloudinary</groupId>
+    <artifactId>cloudinary-http44</artifactId>
+    <version>1.38.0</version> <!-- Use the latest stable version -->
+</dependency>
 </dependencies>
 	
 
