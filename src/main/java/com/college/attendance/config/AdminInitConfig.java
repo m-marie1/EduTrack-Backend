@@ -8,6 +8,7 @@ import org.springframework.context.ApplicationListener;
 import org.springframework.context.event.ContextRefreshedEvent;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
+import org.springframework.beans.factory.annotation.Value;
 
 import java.util.Optional;
 
@@ -25,16 +26,30 @@ public class AdminInitConfig implements ApplicationListener<ContextRefreshedEven
         this.passwordEncoder = passwordEncoder;
     }
 
+    // ---------------------------------------------------------------------
+    // Admin credentials injected from configuration / environment variables
+    // ---------------------------------------------------------------------
+
+    @Value("${ADMIN_USERNAME}")
+    private String adminUsernameProp;
+
+    @Value("${ADMIN_PASSWORD}")
+    private String adminPasswordProp;
+
+    @Value("${ADMIN_EMAIL}")
+    private String adminEmailProp;
+
     @Override
     public void onApplicationEvent(ContextRefreshedEvent event) {
         if (alreadySetup) {
             return;
         }
 
-        // Username and password for admin user
-        String adminUsername = "admin_edutrack";
-        String adminPassword = "A9$k2pL8#xB7!fR3";
-        String adminEmail = "admin@edutrack.com";
+        // Username, password and email for admin user are read from environment variables (or application properties)
+        // with sensible defaults to preserve current behaviour in non-production environments.
+        String adminUsername = adminUsernameProp;
+        String adminPassword = adminPasswordProp;
+        String adminEmail = adminEmailProp;
 
         // Check if admin already exists
         Optional<User> existingAdmin = userRepository.findByUsername(adminUsername);

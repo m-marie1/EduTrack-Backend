@@ -1346,7 +1346,6 @@ The system supports three types of users, each with different permissions:
 
 ### Admin
 
-- Credentials: Username: `admin_edutrack`, Password: `A9$k2pL8#xB7!fR3`
 - Permissions:
   - View, create, update, and delete courses
   - Review professor requests
