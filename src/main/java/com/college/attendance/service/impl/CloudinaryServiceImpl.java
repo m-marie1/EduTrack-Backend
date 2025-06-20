@@ -41,7 +41,8 @@ public class CloudinaryServiceImpl implements CloudinaryService {
         }
 
         // Sanitize the baseName (replace disallowed chars, keep dot out because it's removed)
-        String sanitizedBaseName = baseName.replaceAll("[^a-zA-Z0-9_\-]", "_");
+        // Note: In Java string literals, backslash must be escaped (\\) so the dash is treated literally inside the regex
+        String sanitizedBaseName = baseName.replaceAll("[^a-zA-Z0-9_\\-]", "_");
 
         // Build the publicId without the extension; Cloudinary will add it automatically in the secure_url
         String publicId = "uploads/" + UUID.randomUUID().toString() + "_" + sanitizedBaseName;
