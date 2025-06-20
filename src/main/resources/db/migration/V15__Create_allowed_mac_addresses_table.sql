@@ -1,0 +1,5 @@
+CREATE TABLE allowed_mac_addresses (
+    id BIGSERIAL PRIMARY KEY,
+    mac_address VARCHAR(50) UNIQUE NOT NULL,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP
+); 
