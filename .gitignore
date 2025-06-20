@@ -82,6 +82,3 @@ Thumbs.db
 # Local helper scripts that may contain sensitive environment variables
 run-local-prod.sh
 run-local-prod.bat
-frontend.md
-backend.md
-

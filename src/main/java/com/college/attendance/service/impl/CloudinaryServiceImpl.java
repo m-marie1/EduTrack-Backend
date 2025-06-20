@@ -24,16 +24,38 @@ public class CloudinaryServiceImpl implements CloudinaryService {
         // Generate a unique public ID within an 'uploads' folder structure
         // This helps organize files in Cloudinary and prevents overwriting files with the same original name.
         String originalFilename = file.getOriginalFilename() != null ? file.getOriginalFilename() : "file";
-        // Sanitize filename slightly (replace spaces, etc.) - more robust sanitization might be needed
-        String sanitizedFilename = originalFilename.replaceAll("[^a-zA-Z0-9.\\-_]", "_");
-        String publicId = "uploads/" + UUID.randomUUID().toString() + "_" + sanitizedFilename;
+
+        // Separate the base name from the extension so we don't include the extension twice.
+        // For example, for "cover_3.pdf" we want:
+        //   baseName = "cover_3" , extension = "pdf"
+        // Cloudinary will automatically append the extension that corresponds to the uploaded resource
+        // therefore we must NOT embed the extension inside the publicId, otherwise we end up with
+        // URLs such as ".../cover_3.pdf.pdf" which break for certain resource-types (e.g., PDFs).
+
+        String baseName;
+        int dotIndex = originalFilename.lastIndexOf('.');
+        if (dotIndex > 0) {
+            baseName = originalFilename.substring(0, dotIndex);
+        } else {
+            baseName = originalFilename; // No extension found
+        }
+
+        // Sanitize the baseName (replace disallowed chars, keep dot out because it's removed)
+        String sanitizedBaseName = baseName.replaceAll("[^a-zA-Z0-9_\-]", "_");
+
+        // Build the publicId without the extension; Cloudinary will add it automatically in the secure_url
+        String publicId = "uploads/" + UUID.randomUUID().toString() + "_" + sanitizedBaseName;
         return uploadFileInternal(file, publicId);
     }
 
     @Override
     public String uploadFile(MultipartFile file, String publicId) throws IOException {
-        // Ensure the publicId starts with the uploads/ prefix for consistency
+        // Ensure the publicId does not include an extension to avoid double extensions in generated URLs
         String effectivePublicId = publicId.startsWith("uploads/") ? publicId : "uploads/" + publicId;
+        int extIndex = effectivePublicId.lastIndexOf('.');
+        if (extIndex > effectivePublicId.lastIndexOf('/')) {
+            effectivePublicId = effectivePublicId.substring(0, extIndex);
+        }
         return uploadFileInternal(file, effectivePublicId);
     }
 
