@@ -68,11 +68,15 @@ public class CloudinaryServiceImpl implements CloudinaryService {
         log.info("Uploading file '{}' to Cloudinary with public ID '{}'", file.getOriginalFilename(), publicId);
 
         try {
+            // Decide on the correct Cloudinary resource_type. Images should stay as "image", everything else goes to "raw".
+            String lowerName = file.getOriginalFilename().toLowerCase();
+            boolean isImage = lowerName.endsWith(".jpg") || lowerName.endsWith(".jpeg") || lowerName.endsWith(".png") || lowerName.endsWith(".gif") || lowerName.endsWith(".bmp") || lowerName.endsWith(".webp") || lowerName.endsWith(".svg");
+
             // Upload the file bytes
             Map<?, ?> uploadResult = cloudinary.uploader().upload(file.getBytes(), ObjectUtils.asMap(
                     "public_id", publicId,
                     "overwrite", true, // Allow overwriting if the same public_id is used (UUID makes this unlikely for the first method)
-                    "resource_type", "auto" // Automatically detect resource type (image, video, raw file like PDF/ZIP)
+                    "resource_type", isImage ? "image" : "raw" // Use raw for non-image files (PDF, DOCX, ZIP …)
             ));
 
             // Get the secure URL (HTTPS) of the uploaded file
