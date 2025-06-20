@@ -34,18 +34,13 @@ public class FileUploadController {
                     .body(ApiResponse.error("Please select a file to upload"));
             }
             
-            // Validate file type
+            // Basic validation: ensure we have a detectable content-type.  
+            // We no longer restrict to a hard-coded whitelist so that files such as PPT/PPTX, TXT, ZIP, etc. are accepted.  
+            // If further security filtering is needed (e.g., to block EXE or DLL), add it here.
             String contentType = file.getContentType();
-            if (contentType == null || 
-                !(contentType.startsWith("image/") || 
-                contentType.equals("application/pdf") || 
-                contentType.equals("application/msword") || 
-                contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document") ||
-                contentType.equals("application/vnd.ms-excel") ||
-                contentType.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))) {
-                
+            if (contentType == null || contentType.trim().isEmpty()) {
                 return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Only images, PDFs, and Office documents are allowed"));
+                    .body(ApiResponse.error("Unsupported or unknown file type"));
             }
             
             // Upload the file to Cloudinary
@@ -86,18 +81,11 @@ public class FileUploadController {
                     .body(ApiResponse.error("Please select a file to upload"));
             }
             
-            // Validate file type
+            // Basic validation (see comments above). Allow any non-null content-type.
             String contentType = file.getContentType();
-            if (contentType == null || 
-                !(contentType.startsWith("image/") || 
-                contentType.equals("application/pdf") || 
-                contentType.equals("application/msword") || 
-                contentType.equals("application/vnd.openxmlformats-officedocument.wordprocessingml.document") ||
-                contentType.equals("application/vnd.ms-excel") ||
-                contentType.equals("application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"))) {
-                
+            if (contentType == null || contentType.trim().isEmpty()) {
                 return ResponseEntity.badRequest()
-                    .body(ApiResponse.error("Only images, PDFs, and Office documents are allowed"));
+                    .body(ApiResponse.error("Unsupported or unknown file type"));
             }
             
             // Upload the file to Cloudinary
