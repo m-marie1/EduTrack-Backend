@@ -26,6 +26,7 @@ public class AllowedMacAddressService {
         if (!repository.existsByMacAddressIgnoreCase(normalized)) {
             AllowedMacAddress mac = AllowedMacAddress.builder()
                     .macAddress(normalized)
+                    .createdAt(java.time.LocalDateTime.now())
                     .build();
             repository.save(mac);
         }
